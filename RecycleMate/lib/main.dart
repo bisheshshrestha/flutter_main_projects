@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:recycle_mate/pages/home_page.dart';
 import 'package:recycle_mate/pages/onboarding.dart';
 
 void main() {
@@ -16,7 +17,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: Onboarding(),
+      home: HomePage(),
     );
   }
 }

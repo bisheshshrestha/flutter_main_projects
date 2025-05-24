@@ -24,4 +24,12 @@ class AppWidget{
         fontWeight: FontWeight.bold
     );
   }
+
+  static TextStyle greenTextStyle(double size){
+    return TextStyle(
+        color: Colors.green,
+        fontSize: size,
+        fontWeight: FontWeight.bold
+    );
+  }
 }
