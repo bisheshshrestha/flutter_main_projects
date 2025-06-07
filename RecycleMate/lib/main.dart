@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:recycle_mate/pages/home_page.dart';
+import 'package:recycle_mate/pages/login_page.dart';
 import 'package:recycle_mate/pages/onboarding.dart';
 
 void main() {
@@ -12,12 +13,11 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Recycle Mate',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: HomePage(),
+      home: LoginPage(),
     );
   }
 }
