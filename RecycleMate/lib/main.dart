@@ -1,9 +1,13 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:recycle_mate/pages/home_page.dart';
 import 'package:recycle_mate/pages/login_page.dart';
 import 'package:recycle_mate/pages/onboarding.dart';
+import 'package:recycle_mate/pages/upload_item.dart';
 
-void main() {
+void main() async{
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   runApp(const MyApp());
 }
 
@@ -17,7 +21,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
       ),
-      home: LoginPage(),
+      home: UploadItem(),
     );
   }
 }

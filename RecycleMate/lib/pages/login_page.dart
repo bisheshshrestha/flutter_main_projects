@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:recycle_mate/services/auth.dart';
 import 'package:recycle_mate/services/widget_support.dart';
 
 class LoginPage extends StatefulWidget {
@@ -44,26 +45,31 @@ class _LoginPageState extends State<LoginPage> {
             ),
             Text("Get Started", style: AppWidget.greenTextStyle(24.0)),
             SizedBox(height: 50,),
-            Container(
-              margin:EdgeInsets.only(left: 20.0, right: 20.0),
-              child: Material(
-                elevation: 4.0,
-                  borderRadius: BorderRadius.circular(30),
-                child: Container(
-                  padding: EdgeInsets.only(left: 20.0),
-                  decoration: BoxDecoration(color: Colors.green,
-                  borderRadius: BorderRadius.circular(30)),
-                  child: Row(children: [
-                    Container(
-                        padding: EdgeInsets.all(5.0),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(50)
-                        ),
-                        child: Image.asset("assets/images/google.png",height: 50,width: 50,fit: BoxFit.cover,)),
-                    SizedBox(height: 20.0,),
-                    Text("Sign in with Google",style: AppWidget.whiteTextStyle(25.0),),
-                  ]),
+            GestureDetector(
+              onTap: (){
+                AuthMethods().signInwithGoogle(context);
+              },
+              child: Container(
+                margin:EdgeInsets.only(left: 20.0, right: 20.0),
+                child: Material(
+                  elevation: 4.0,
+                    borderRadius: BorderRadius.circular(30),
+                  child: Container(
+                    padding: EdgeInsets.only(left: 20.0),
+                    decoration: BoxDecoration(color: Colors.green,
+                    borderRadius: BorderRadius.circular(30)),
+                    child: Row(children: [
+                      Container(
+                          padding: EdgeInsets.all(5.0),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(50)
+                          ),
+                          child: Image.asset("assets/images/google.png",height: 50,width: 50,fit: BoxFit.cover,)),
+                      SizedBox(height: 20.0,),
+                      Text("Sign in with Google",style: AppWidget.whiteTextStyle(25.0),),
+                    ]),
+                  ),
                 ),
               ),
             ),
