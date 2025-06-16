@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:recycle_mate/services/widget_support.dart';
 
 class UploadItem extends StatefulWidget {
-  const UploadItem({super.key});
+  String category,id;
+   UploadItem({super.key, required this.category,required this.id});
 
   @override
   State<UploadItem> createState() => _UploadItemState();
@@ -55,18 +56,22 @@ class _UploadItemState extends State<UploadItem> {
                   color: Color.fromARGB(255, 251, 251, 251),
                 ),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     SizedBox(height: 30.0),
-                    Container(
-                      height: 160,
-                      width: 160,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border.all(color: Colors.black45, width: 2.0),
-                        borderRadius: BorderRadius.circular(20)
+                    Center(
+                      child: Container(
+                        height: 160,
+                        width: 160,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          border: Border.all(color: Colors.black45, width: 2.0),
+                          borderRadius: BorderRadius.circular(20)
+                        ),
+                        child: Icon(Icons.camera_alt_outlined, size: 30.0),
                       ),
-                      child: Icon(Icons.camera_alt_outlined, size: 30.0),
                     ),
+                    //Address
                     SizedBox(height: 30.0),
                     Padding(
                       padding: const EdgeInsets.only(left: 20.0,right: 20.0),
@@ -77,7 +82,6 @@ class _UploadItemState extends State<UploadItem> {
                       margin: EdgeInsets.only(left: 20.0, right: 20.0),
                       child: Material(
                         elevation: 3.0,
-
                         child: Container(
                           decoration: BoxDecoration(color: Colors.white,
                               borderRadius: BorderRadius.circular(10)),
@@ -91,6 +95,49 @@ class _UploadItemState extends State<UploadItem> {
                             ),
                           ),
 
+                        ),
+                      ),
+                    ),
+
+                    //Quantity
+                    SizedBox(height: 40.0),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 20.0,right: 20.0),
+                      child: Text("Enter the Quantity of the items to be picked.",style: AppWidget.normalTextStyle(18.0),),
+                    ),
+                    SizedBox(height: 10.0),
+                    Container(
+                      margin: EdgeInsets.only(left: 20.0, right: 20.0),
+                      child: Material(
+                        elevation: 3.0,
+                        child: Container(
+                          decoration: BoxDecoration(color: Colors.white,
+                              borderRadius: BorderRadius.circular(10)),
+                          child:
+                          TextField(
+                            decoration: InputDecoration(
+                              border: InputBorder.none,
+                              prefixIcon: Icon(Icons.inventory,color: Colors.green,),
+                              hintText: "Enter Quantity",
+                              // hintStyle: AppWidget.normalTextStyle(16.0),
+                            ),
+                          ),
+
+                        ),
+                      ),
+                    ),
+                    //Quantity code finished
+                    SizedBox(height: 40.0),
+                    Center(
+                      child: Material(
+                        elevation: 2.0,
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          height: 50.0,
+                          width: MediaQuery.of(context).size.width/1.5,
+                          decoration: BoxDecoration(color: Colors.green,
+                          borderRadius: BorderRadius.circular(20)),
+                          child: Center(child: Text("Upload",style: AppWidget.whiteTextStyle(26.0),)),
                         ),
                       ),
                     )
