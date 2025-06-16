@@ -2,8 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:recycle_mate/pages/home_page.dart';
 import 'package:recycle_mate/pages/login_page.dart';
-import 'package:recycle_mate/pages/onboarding.dart';
-import 'package:recycle_mate/pages/upload_item.dart';
+
 
 void main() async{
   WidgetsFlutterBinding.ensureInitialized();
