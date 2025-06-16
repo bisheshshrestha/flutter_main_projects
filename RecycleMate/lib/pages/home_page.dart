@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:recycle_mate/pages/upload_item.dart';
 import 'package:recycle_mate/services/widget_support.dart';
 
 class HomePage extends StatefulWidget {
@@ -127,20 +128,25 @@ class _HomePageState extends State<HomePage> {
     );
   }
   Widget buildCategoryItem(String imagePath, String label) {
-    return Column(
-      children: [
-        Container(
-          padding: EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Color(0xFFececf8),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.black45, width: 2.0),
+    return GestureDetector(
+      onTap: (){
+        Navigator.push(context, MaterialPageRoute(builder: (context)=> UploadItem(category: "Plastic", id: id)));
+      },
+      child: Column(
+        children: [
+          Container(
+            padding: EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Color(0xFFececf8),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.black45, width: 2.0),
+            ),
+            child: Image.asset(imagePath, height: 70, width: 70, fit: BoxFit.cover),
           ),
-          child: Image.asset(imagePath, height: 70, width: 70, fit: BoxFit.cover),
-        ),
-        SizedBox(height: 5.0),
-        Text(label, style: AppWidget.normalTextStyle(20.0)),
-      ],
+          SizedBox(height: 5.0),
+          Text(label, style: AppWidget.normalTextStyle(20.0)),
+        ],
+      ),
     );
   }
 }
