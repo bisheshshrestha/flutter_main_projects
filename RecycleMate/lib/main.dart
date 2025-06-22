@@ -1,6 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:recycle_mate/Admin/admin_approval.dart';
+import 'package:recycle_mate/pages/bottomnav.dart';
 import 'package:recycle_mate/pages/home_page.dart';
 import 'package:recycle_mate/pages/login_page.dart';
 
@@ -21,7 +22,8 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
       ),
-      home: AdminApproval(),
+      home: BottomNav(),
+
     );
   }
 }

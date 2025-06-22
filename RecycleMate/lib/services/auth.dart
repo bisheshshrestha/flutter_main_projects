@@ -37,6 +37,7 @@ class AuthMethods{
         "name" : userDetails.displayName,
         "image": userDetails.photoURL,
         "Id": userDetails.uid,
+        "points": "0"
       };
 
       await DatabaseMethods().addUserInfo(userInfoMap, userDetails.uid);

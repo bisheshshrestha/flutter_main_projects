@@ -21,4 +21,33 @@ class DatabaseMethods {
         .doc(id)
         .set(userInfoMap);
   }
+
+  Future<Stream<QuerySnapshot>> getAdminApproval() async{
+    return await FirebaseFirestore.instance
+        .collection("requests")
+        .where("Status",isEqualTo: "Pending")
+        .snapshots();
+  }
+
+  Future updateAdminRequests(String id) async{
+    return await FirebaseFirestore.instance
+        .collection("requests")
+        .doc(id)
+        .update({"Status":"Approved"});
+  }
+
+  Future updateUserRequests(String id, String itemId) async{
+    return await FirebaseFirestore.instance
+        .collection("users")
+        .doc(id)
+        .collection("items").doc(itemId)
+        .update({"Status":"Approved"});
+  }
+
+  Future updateUserPoints(String id, String points) async{
+    return await FirebaseFirestore.instance
+        .collection("users")
+        .doc(id)
+        .update({"points":points});
+  }
 }
