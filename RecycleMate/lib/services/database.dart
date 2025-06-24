@@ -50,4 +50,20 @@ class DatabaseMethods {
         .doc(id)
         .update({"points":points});
   }
+
+  Future addUserRedeemPoints(Map<String, dynamic> userInfoMap, String id, String redeemId) async{
+    return await FirebaseFirestore.instance
+        .collection("users")
+        .doc(id)
+        .collection("redeem")
+        .doc(redeemId)
+        .set(userInfoMap);
+  }
+
+  Future addAdminRedeemRequests(Map<String, dynamic> userInfoMap, String reedemId) async{
+    return await FirebaseFirestore.instance
+        .collection("redeem")
+        .doc(reedemId)
+        .set(userInfoMap);
+  }
 }

@@ -21,8 +21,10 @@ class MyApp extends StatelessWidget {
       title: 'Recycle Mate',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
+        scaffoldBackgroundColor: Colors.white,
       ),
       home: BottomNav(),
+
 
     );
   }
