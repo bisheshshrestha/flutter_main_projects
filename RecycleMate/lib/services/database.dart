@@ -66,4 +66,13 @@ class DatabaseMethods {
         .doc(reedemId)
         .set(userInfoMap);
   }
+
+
+  Future<Stream<QuerySnapshot>> getUserTransactions(String id) async{
+    return await FirebaseFirestore.instance
+        .collection("users")
+        .doc(id)
+        .collection("redeem")
+        .snapshots();
+  }
 }

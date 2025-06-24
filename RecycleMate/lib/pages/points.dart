@@ -16,6 +16,7 @@ class Points extends StatefulWidget {
 class _PointsState extends State<Points> {
 
   String? id, mypoints,name;
+  Stream? pointStream;
 
   getthesharedprefs() async {
     id = await SharedPreferenceHelper().getUserId();
@@ -27,6 +28,8 @@ class _PointsState extends State<Points> {
   ontheload() async{
     await getthesharedprefs();
     mypoints = await getUserPoints(id!);
+    pointStream = await DatabaseMethods().getUserTransactions(id!);
+
     setState(() {
 
     });
@@ -147,6 +150,26 @@ class _PointsState extends State<Points> {
                         ),
                       ),
                     ),
+                  ),
+                  SizedBox(height: 20.0,),
+                  Expanded(
+                    child: Container(
+                      width: MediaQuery.of(context).size.width,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: const BorderRadius.only(topLeft: Radius.circular(30), topRight: Radius.circular(30)),
+                      ),
+                      child: Column(
+                        children: [
+                          SizedBox(height: 10.0,),
+                          Text("Last Transactions",style: AppWidget.normalTextStyle(20.0)),
+                          SizedBox(height: 20.0,),
+                          Container(
+                              height: MediaQuery.of(context).size.height / 2,
+                              child: allApprovals()),
+                        ]
+                      ),
+                    ),
                   )
                 ]),
               ),
@@ -218,7 +241,7 @@ class _PointsState extends State<Points> {
               onTap: () async{
                 if(pointscontroller.text != "" && esewacontroller.text != "" && int.parse(mypoints!) > int.parse(pointscontroller.text)  ){
                   DateTime now  =DateTime.now();
-                  String formattedDate = DateFormat('dd-MM-yyyy').format(now);
+                  String formattedDate = DateFormat('d\nMM').format(now);
                   int updatedPoints = int.parse(mypoints!) - int.parse(pointscontroller.text);
                   await DatabaseMethods().updateUserPoints(id!, updatedPoints.toString());
 
@@ -262,4 +285,61 @@ class _PointsState extends State<Points> {
       ),
     ),
   );
+
+  Widget allApprovals() {
+    return StreamBuilder(
+      stream: pointStream,
+      builder: (context, AsyncSnapshot snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.symmetric(vertical: 20.0),
+          itemCount: snapshot.data.docs.length,
+          itemBuilder: (context, index) {
+            DocumentSnapshot ds = snapshot.data.docs[index];
+            return  Container(
+              padding: const EdgeInsets.all(10),
+              margin: const EdgeInsets.only(left: 16.0,right: 16.0),
+              width: MediaQuery.of(context).size.width,
+              decoration: BoxDecoration(
+                color: Color.fromARGB(255, 233, 233, 249),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.black ,
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                    child: Text(ds["Date"],textAlign:TextAlign.center,style: AppWidget.whiteTextStyle(18.0),),
+                  ),
+                  SizedBox(width: 20.0,),
+                  Column(
+                    children: [
+                      Text("Redeem Points",style: AppWidget.normalTextStyle(18.0),),
+                      Text(ds["Points"],style: AppWidget.greenTextStyle(24.0),),
+                    ],
+                  ),
+                  SizedBox(width: 25.0,),
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Color.fromARGB(48, 241, 77, 66),
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                    child: Text(ds["Status"],style: TextStyle(color: Colors.red,fontSize: 18.0,fontWeight: FontWeight.bold),),
+                  )
+
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 }
