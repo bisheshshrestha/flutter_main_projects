@@ -1,6 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:recycle_mate/Admin/admin_approval.dart';
+import 'package:recycle_mate/Admin/admin_login.dart';
 import 'package:recycle_mate/Admin/admin_reedem.dart';
 import 'package:recycle_mate/pages/bottomnav.dart';
 import 'package:recycle_mate/pages/home_page.dart';
@@ -25,7 +26,7 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: Colors.white,
       ),
       home: BottomNav(),
-      // home: AdminReedem(),
+      // home: AdminLogin(),
 
 
     );

@@ -99,4 +99,14 @@ class DatabaseMethods {
         .update({"Status":"Approved"});
   }
 
+
+  Future<Stream<QuerySnapshot>> getUserPendingRequests(String id) async{
+    return await FirebaseFirestore.instance
+        .collection("users")
+        .doc(id)
+        .collection("items")
+        .where("Status",isEqualTo: "Pending")
+        .snapshots();
+  }
+
 }

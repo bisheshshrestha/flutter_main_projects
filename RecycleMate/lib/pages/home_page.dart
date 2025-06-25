@@ -1,5 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:recycle_mate/pages/upload_item.dart';
+import 'package:recycle_mate/services/database.dart';
 import 'package:recycle_mate/services/shared_pref.dart';
 import 'package:recycle_mate/services/widget_support.dart';
 
@@ -11,15 +13,23 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-String? id;
-getthesharedpref() async{
+  String? id,name,image;
+  Stream? pendingStream;
+
+
+
+
+  getthesharedpref() async{
   id = await SharedPreferenceHelper().getUserId();
+  name = await SharedPreferenceHelper().getUserName();
+  image = await SharedPreferenceHelper().getUserImage();
   setState(() {
 
   });
 }
 ontheload() async{
   await getthesharedpref();
+  pendingStream = await DatabaseMethods().getUserPendingRequests(id!);
   setState(() {
 
   });
@@ -48,13 +58,18 @@ ontheload() async{
                     padding: const EdgeInsets.only(left: 20.0),
                     child: Text("Hello, ", style: AppWidget.headlineTextStyle(26.0)),
                   ),
-                  Text("Bishesh", style: AppWidget.greenTextStyle(25.0)),
+                  Text(name != null ? name!.split(" ")[0] : "", style: AppWidget.greenTextStyle(25.0)),
                   Spacer(),
                   Padding(
                     padding: const EdgeInsets.only(right: 20),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(10),
-                      child: Image.asset(
+                      child: image != null?Image.network(
+                        image!,
+                        height: 50,
+                        width: 50,
+                        fit: BoxFit.cover,
+                      ) :Image.asset(
                         "assets/images/boy.jpg",
                         height: 50,
                         width: 50,
@@ -96,51 +111,10 @@ ontheload() async{
                 padding: const EdgeInsets.only(left: 20),
                 child: Text("Pending Request",style: AppWidget.headlineTextStyle(22.0),),
               ),
-              SizedBox(height: 20,),
+              SizedBox(height: 10,),
               Container(
-                margin: EdgeInsets.only(left: 20.0 ,right: 20.0),
-                width: MediaQuery.of(context).size.width,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border.all(color: Colors.black45,width: 2.0),
-                  borderRadius: BorderRadius.circular(20)
-                ),
-                child: Column(
-                  children: [
-                    SizedBox(height: 10.0,),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.location_on,
-                        color: Colors.green,
-                          size: 30.0,
-                        ),
-                        SizedBox(width: 10.0,),
-                        Text("Newroad Kathmandu", style: AppWidget.normalTextStyle(20.0),)
-
-                      ],
-                    ),
-                    Divider(),
-                    Image.asset("assets/images/chips.png",height: 120, width: 120, fit: BoxFit.cover,),
-                    SizedBox(width: 10.0,),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.layers,
-                          color: Colors.green,
-                          size: 30.0,
-                        ),
-                        SizedBox(width: 10.0,),
-                        Text(
-                          "3",
-                          style: AppWidget.normalTextStyle(24.0),
-                        )
-                      ],
-                    ),
-                    SizedBox(height: 10.0,),
-                  ],
-                ),
-              ),
+                height: MediaQuery.of(context).size.height/1.5,
+                  child: pendingRequests()),
               SizedBox(height: 30,),
             ],
           ),
@@ -170,4 +144,69 @@ ontheload() async{
       ),
     );
   }
+
+Widget pendingRequests() {
+  return StreamBuilder(
+    stream: pendingStream,
+    builder: (context, AsyncSnapshot snapshot) {
+      if (!snapshot.hasData) {
+        return const Center(child: CircularProgressIndicator());
+      }
+
+      return ListView.builder(
+        padding: const EdgeInsets.symmetric(vertical: 20.0),
+        physics: NeverScrollableScrollPhysics(),
+        itemCount: snapshot.data.docs.length,
+        itemBuilder: (context, index) {
+          DocumentSnapshot ds = snapshot.data.docs[index];
+          return Container(
+            margin: EdgeInsets.only(left: 20.0 ,right: 20.0),
+            width: MediaQuery.of(context).size.width,
+            decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border.all(color: Colors.black45,width: 2.0),
+                borderRadius: BorderRadius.circular(20)
+            ),
+            child: Column(
+              children: [
+                SizedBox(height: 10.0,),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.location_on,
+                      color: Colors.green,
+                      size: 30.0,
+                    ),
+                    SizedBox(width: 10.0,),
+                    Text(ds["Address"], style: AppWidget.normalTextStyle(20.0),)
+
+                  ],
+                ),
+                Divider(),
+                Image.asset("assets/images/chips.png",height: 120, width: 120, fit: BoxFit.cover,),
+                SizedBox(width: 10.0,),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.layers,
+                      color: Colors.green,
+                      size: 30.0,
+                    ),
+                    SizedBox(width: 10.0,),
+                    Text(
+                      ds["Quantity"],
+                      style: AppWidget.normalTextStyle(24.0),
+                    )
+                  ],
+                ),
+                SizedBox(height: 10.0,),
+              ],
+
+            ),
+          );
+        },
+      );
+    },
+  );
+}
 }
