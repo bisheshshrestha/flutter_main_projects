@@ -68,113 +68,125 @@ class _PointsState extends State<Points> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: mypoints == null ? const Center(child: CircularProgressIndicator()) : Container(
-        margin: const EdgeInsets.only(top: 40),
-        child: Column(
-          children: [
-            Center(
-              child: Text(
-                "Points Page",
-                style: AppWidget.headlineTextStyle(28.0),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Expanded(
-              child: Container(
-                width: MediaQuery.of(context).size.width,
-                decoration: const BoxDecoration(
-                  color: Color.fromARGB(255, 233, 233, 249),
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(30),
-                    topRight: Radius.circular(30),
+      body: mypoints == null
+          ? const Center(child: CircularProgressIndicator())
+          : SafeArea(
+        child: SingleChildScrollView(
+          child: Container(
+            padding: const EdgeInsets.only(top: 20, bottom: 20),
+            child: Column(
+              children: [
+                Center(
+                  child: Text(
+                    "Points Page",
+                    style: AppWidget.headlineTextStyle(28.0),
                   ),
                 ),
-                child: Column(children: [
-                  const SizedBox(height: 30),
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 30.0),
-                    child: Material(
-                      elevation: 3.0,
-                      borderRadius: BorderRadius.circular(20.0),
-                      child: Container(
-                        padding: const EdgeInsets.all(15),
-                        width: MediaQuery.of(context).size.width,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20.0),
-                        ),
-                        child: Row(
-                          children: [
-                            const SizedBox(width: 10),
-                            Image.asset(
-                              "assets/images/coin.png",
-                              height: 60,
-                              width: 60,
-                              fit: BoxFit.cover,
-                            ),
-                            const SizedBox(width: 50.0),
-                            Column(
-                              children: [
-                                Text("Points Earned",
-                                    style: AppWidget.normalTextStyle(20.0)),
-                                const SizedBox(height: 10),
-                                Text(mypoints.toString(),
-                                    style: AppWidget.greenTextStyle(28.0)),
-                              ],
-                            )
-                          ],
-                        ),
-                      ),
+                const SizedBox(height: 20),
+                Container(
+                  width: MediaQuery.of(context).size.width,
+                  decoration: const BoxDecoration(
+                    color: Color.fromARGB(255, 233, 233, 249),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(30),
+                      topRight: Radius.circular(30),
                     ),
                   ),
-                  const SizedBox(height: 30),
-                  GestureDetector(
-                    onTap: () {
-                      openBox();
-                    },
-                    child: Material(
-                      elevation: 2.0,
-                      borderRadius: BorderRadius.circular(15.0),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.green,
-                          borderRadius: BorderRadius.circular(15.0),
-                        ),
-                        height: 50.0,
-                        width: MediaQuery.of(context).size.width / 1.5,
-                        child: Center(
-                          child: Text(
-                            "Redeem Points",
-                            style: AppWidget.whiteTextStyle(20.0),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 30),
+                      // Points Box
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 30.0),
+                        child: Material(
+                          elevation: 3.0,
+                          borderRadius: BorderRadius.circular(20.0),
+                          child: Container(
+                            padding: const EdgeInsets.all(15),
+                            width: MediaQuery.of(context).size.width,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20.0),
+                            ),
+                            child: Row(
+                              children: [
+                                const SizedBox(width: 10),
+                                Image.asset(
+                                  "assets/images/coin.png",
+                                  height: 60,
+                                  width: 60,
+                                  fit: BoxFit.cover,
+                                ),
+                                const SizedBox(width: 50.0),
+                                Column(
+                                  children: [
+                                    Text("Points Earned",
+                                        style:
+                                        AppWidget.normalTextStyle(20.0)),
+                                    const SizedBox(height: 10),
+                                    Text(mypoints.toString(),
+                                        style:
+                                        AppWidget.greenTextStyle(28.0)),
+                                  ],
+                                )
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
+                      const SizedBox(height: 30),
+                      // Redeem Button
+                      GestureDetector(
+                        onTap: () {
+                          openBox();
+                        },
+                        child: Material(
+                          elevation: 2.0,
+                          borderRadius: BorderRadius.circular(15.0),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.green,
+                              borderRadius: BorderRadius.circular(15.0),
+                            ),
+                            height: 50.0,
+                            width: MediaQuery.of(context).size.width / 1.5,
+                            child: Center(
+                              child: Text(
+                                "Redeem Points",
+                                style: AppWidget.whiteTextStyle(20.0),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 30),
+                      Container(
+                        width: MediaQuery.of(context).size.width,
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.only(
+                              topLeft: Radius.circular(30),
+                              topRight: Radius.circular(30)),
+                        ),
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 10.0),
+                            Text("Last Transactions",
+                                style: AppWidget.normalTextStyle(20.0)),
+                            const SizedBox(height: 20.0),
+                            SizedBox(
+                              height: 300,
+                              child: allApprovals(),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  SizedBox(height: 20.0,),
-                  Expanded(
-                    child: Container(
-                      width: MediaQuery.of(context).size.width,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: const BorderRadius.only(topLeft: Radius.circular(30), topRight: Radius.circular(30)),
-                      ),
-                      child: Column(
-                        children: [
-                          SizedBox(height: 10.0,),
-                          Text("Last Transactions",style: AppWidget.normalTextStyle(20.0)),
-                          SizedBox(height: 20.0,),
-                          Container(
-                              height: MediaQuery.of(context).size.height / 2,
-                              child: allApprovals()),
-                        ]
-                      ),
-                    ),
-                  )
-                ]),
-              ),
-            )
-          ],
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -241,7 +253,7 @@ class _PointsState extends State<Points> {
               onTap: () async{
                 if(pointscontroller.text != "" && esewacontroller.text != "" && int.parse(mypoints!) > int.parse(pointscontroller.text)  ){
                   DateTime now  =DateTime.now();
-                  String formattedDate = DateFormat('d\nMM').format(now);
+                  String formattedDate = DateFormat('d\nMMM').format(now);
                   int updatedPoints = int.parse(mypoints!) - int.parse(pointscontroller.text);
                   await DatabaseMethods().updateUserPoints(id!, updatedPoints.toString());
 
@@ -251,12 +263,12 @@ class _PointsState extends State<Points> {
                     "Esewa ID":esewacontroller.text,
                     "Status":"Pending",
                     "Date":formattedDate,
+                    "User ID":id,
                   };
                   String reedemId = randomAlphaNumeric(10);
                   await DatabaseMethods().addUserRedeemPoints(userRedeemMap, id!, reedemId);
                   await DatabaseMethods().addAdminRedeemRequests(userRedeemMap, reedemId);
                   mypoints = await getUserPoints(id!);
-
 
                   setState(() {
                   });
@@ -328,10 +340,11 @@ class _PointsState extends State<Points> {
                   Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: Color.fromARGB(48, 241, 77, 66),
+                      color: ds["Status"]=="Approved"?Color.fromARGB(
+                          119, 165, 248, 121) : Color.fromARGB(48, 241, 77, 66),
                       borderRadius: BorderRadius.circular(10.0),
                     ),
-                    child: Text(ds["Status"],style: TextStyle(color: Colors.red,fontSize: 18.0,fontWeight: FontWeight.bold),),
+                    child: Text(ds["Status"],style: TextStyle(color:ds["Status"]=="Approved"?Colors.green : Colors.red,fontSize: 18.0,fontWeight: FontWeight.bold),),
                   )
 
                 ],

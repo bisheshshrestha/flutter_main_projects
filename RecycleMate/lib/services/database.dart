@@ -75,4 +75,28 @@ class DatabaseMethods {
         .collection("redeem")
         .snapshots();
   }
+
+  Future<Stream<QuerySnapshot>> getAdminReedemApproval() async{
+    return await FirebaseFirestore.instance
+        .collection("redeem")
+        .where("Status",isEqualTo: "Pending")
+        .snapshots();
+  }
+
+  Future updateAdminReedemRequests(String id) async{
+    return await FirebaseFirestore.instance
+        .collection("redeem")
+        .doc(id)
+        .update({"Status":"Approved"});
+  }
+
+  Future updateUserReedemRequests(String id, String itemId) async{
+    return await FirebaseFirestore.instance
+        .collection("users")
+        .doc(id)
+        .collection("redeem")
+        .doc(itemId)
+        .update({"Status":"Approved"});
+  }
+
 }
