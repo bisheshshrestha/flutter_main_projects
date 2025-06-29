@@ -165,7 +165,7 @@ class _AdminLoginState extends State<AdminLogin> {
       });
 
       if (snapshot.docs.isNotEmpty) {
-        Navigator.pushReplacement(
+        Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const AdminHome()),
         );

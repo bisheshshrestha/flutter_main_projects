@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:recycle_mate/services/database.dart';
 import 'package:recycle_mate/services/widget_support.dart';
 
+import 'admin_home.dart';
+
 class AdminReedem extends StatefulWidget {
   const AdminReedem({super.key});
 
@@ -41,7 +43,7 @@ class _AdminReedemState extends State<AdminReedem> {
                 children: [
                   GestureDetector(
                     onTap: () {
-                      Navigator.pop(context);
+                      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context)=> AdminHome()));
                     },
                     child: Material(
                       elevation: 3.0,

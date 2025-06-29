@@ -125,7 +125,12 @@ ontheload() async{
   Widget buildCategoryItem(String imagePath, String label) {
     return GestureDetector(
       onTap: (){
-        Navigator.push(context, MaterialPageRoute(builder: (context)=> UploadItem(category: "Plastic", id: id!)));
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => UploadItem(category: label, id: id!),
+          ),
+        );
       },
       child: Column(
         children: [

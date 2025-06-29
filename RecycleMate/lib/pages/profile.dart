@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:recycle_mate/pages/bottomnav.dart';
 import 'package:recycle_mate/pages/login_page.dart';
+import 'package:recycle_mate/pages/update_profile.dart';
 import '../services/auth.dart';
 import '../services/shared_pref.dart';
 import '../services/widget_support.dart';
@@ -47,7 +48,7 @@ class _ProfileState extends State<Profile> {
     );
     if (confirmed == true) {
       await AuthMethods().SignOut();
-      Navigator.pushReplacement(
+      Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => LoginPage()),
       );
@@ -71,7 +72,7 @@ class _ProfileState extends State<Profile> {
       try {
         await AuthMethods().deleteUser();
         await SharedPreferenceHelper().clearAll(); // Clear shared prefs after deleting account
-        Navigator.pushReplacement(
+        Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => LoginPage()),
         );
@@ -103,7 +104,7 @@ class _ProfileState extends State<Profile> {
                       if (Navigator.canPop(context)) {
                         Navigator.pop(context);
                       } else {
-                        Navigator.pushReplacement(
+                        Navigator.push(
                           context,
                           MaterialPageRoute(builder: (context) => const BottomNav()),
                         );
@@ -191,7 +192,7 @@ class _ProfileState extends State<Profile> {
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: ElevatedButton.icon(
                 onPressed: () {
-                  // Navigate to update profile
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => UploadProfilePage(userId: id!)));
                 },
                 icon: const Icon(Icons.edit, color: Colors.black),
                 label: const Text("Update Profile", style: TextStyle(color: Colors.black)),

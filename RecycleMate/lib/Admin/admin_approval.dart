@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:recycle_mate/Admin/admin_home.dart';
 import 'package:recycle_mate/services/database.dart';
 import 'package:recycle_mate/services/widget_support.dart';
 
@@ -188,7 +189,7 @@ class _AdminApprovalState extends State<AdminApproval> {
                 children: [
                   GestureDetector(
                     onTap: () {
-                      Navigator.pop(context);
+                      Navigator.push(context, MaterialPageRoute(builder: (context)=> AdminHome()));
                     },
                     child: Material(
                       elevation: 3.0,
