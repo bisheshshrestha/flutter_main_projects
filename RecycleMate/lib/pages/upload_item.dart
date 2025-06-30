@@ -1,6 +1,7 @@
 import 'dart:io';
-
+import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:random_string/random_string.dart';
 import 'package:recycle_mate/services/database.dart';
@@ -8,7 +9,8 @@ import 'package:recycle_mate/services/shared_pref.dart';
 import 'package:recycle_mate/services/widget_support.dart';
 
 class UploadItem extends StatefulWidget {
-  String category, id;
+  final String category;
+  final String id;
 
   UploadItem({required this.category, required this.id});
 
@@ -17,284 +19,247 @@ class UploadItem extends StatefulWidget {
 }
 
 class _UploadItemState extends State<UploadItem> {
-  TextEditingController addresscontroller = new TextEditingController();
-  TextEditingController quantitycontroller = new TextEditingController();
+  TextEditingController addresscontroller = TextEditingController();
+  TextEditingController quantitycontroller = TextEditingController();
   final ImagePicker _picker = ImagePicker();
   File? selectedImage;
   String? id, name;
 
-  getthesharedpref() async {
+  List<Map<String, dynamic>> pickupLocations = [
+    {"name": "Pulchowk", "lat": 27.6795, "lng": 85.3170},
+    {"name": "Baneshwor", "lat": 27.6946, "lng": 85.3420},
+    {"name": "Kalanki", "lat": 27.6941, "lng": 85.2771},
+    {"name": "Thamel", "lat": 27.7167, "lng": 85.3123},
+  ];
+
+  String? selectedLocation;
+  List<Map<String, dynamic>> sortedLocations = [];
+
+  @override
+  void initState() {
+    super.initState();
+    getthesharedpref();
+    fetchAndSortLocationsByDistance();
+  }
+
+  Future<void> getthesharedpref() async {
     id = await SharedPreferenceHelper().getUserId();
     name = await SharedPreferenceHelper().getUserName();
     setState(() {});
   }
 
-  @override
-  void initState() {
-    getthesharedpref();
-    super.initState();
-  }
-
   Future getImage() async {
     var image = await _picker.pickImage(source: ImageSource.gallery);
-    selectedImage = File(image!.path);
-    setState(() {});
+    if (image != null) {
+      selectedImage = File(image.path);
+      setState(() {});
+    }
+  }
+
+  double calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371;
+    var dLat = (lat2 - lat1) * pi / 180;
+    var dLon = (lon2 - lon1) * pi / 180;
+    var a = sin(dLat / 2) * sin(dLat / 2) +
+        cos(lat1 * pi / 180) *
+            cos(lat2 * pi / 180) *
+            sin(dLon / 2) *
+            sin(dLon / 2);
+    var c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    return R * c;
+  }
+
+  Future<void> fetchAndSortLocationsByDistance() async {
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      permission = await Geolocator.requestPermission();
+    }
+
+    Position pos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high);
+
+    List<Map<String, dynamic>> withDistance = pickupLocations.map((loc) {
+      double dist =
+      calculateDistance(pos.latitude, pos.longitude, loc['lat'], loc['lng']);
+      return {
+        "name": loc['name'],
+        "lat": loc['lat'],
+        "lng": loc['lng'],
+        "distance": dist,
+      };
+    }).toList();
+
+    withDistance.sort((a, b) => a["distance"].compareTo(b["distance"]));
+
+    setState(() {
+      sortedLocations = withDistance;
+      selectedLocation = sortedLocations.first["name"];
+      addresscontroller.text = selectedLocation!;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Container(
-        margin: EdgeInsets.only(top: 40.0),
+      body: SafeArea(
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.only(left: 20.0),
+              padding: const EdgeInsets.all(20.0),
               child: Row(
                 children: [
                   GestureDetector(
-                    onTap: () {
-                      Navigator.pop(context);
-                    },
-                    child: Material(
-                      elevation: 3.0,
-                      borderRadius: BorderRadius.circular(60),
-                      child: Container(
-                        padding: EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: Colors.black,
-                          borderRadius: BorderRadius.circular(60),
-                        ),
-                        child: Icon(
-                          Icons.arrow_back_ios_new_rounded,
-                          color: Color(0xFFececf8),
-                          size: 30.0,
-                        ),
-                      ),
-                    ),
+                    onTap: () => Navigator.pop(context),
+                    child: Icon(Icons.arrow_back_ios_new),
                   ),
-                  SizedBox(width: MediaQuery.of(context).size.width / 5),
+                  SizedBox(width: 16),
                   Text("Upload Item", style: AppWidget.headlineTextStyle(25.0)),
                 ],
               ),
             ),
-            SizedBox(height: 20.0),
             Expanded(
-              child: Container(
-                width: MediaQuery.of(context).size.width,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(30.0),
-                    topRight: Radius.circular(30.0),
-                  ),
-                  // color: Color(0xFFececf8),
-                  color: Color.fromARGB(255, 251, 251, 251),
-                ),
-                child: SingleChildScrollView(
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      SizedBox(height: 30.0),
-                      selectedImage != null
-                          ? Center(
-                            child: Container(
-                                height: 160,
-                                width: 160,
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(20),
-                                  child: Image.file(
-                                    selectedImage!,
-                                    fit: BoxFit.cover,
-                                  ),
-                                ),
-                              ),
-                          )
-                          : GestureDetector(
-                              onTap: () {
-                                getImage();
-                              },
-                              child: Center(
-                                child: Container(
+                      Center(
+                        child: Column(
+                          children: [
+                            GestureDetector(
+                              onTap: getImage,
+                              child: selectedImage != null
+                                  ? ClipRRect(
+                                borderRadius: BorderRadius.circular(20),
+                                child: Image.file(
+                                  selectedImage!,
                                   height: 160,
                                   width: 160,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    border: Border.all(
-                                      color: Colors.black45,
-                                      width: 2.0,
-                                    ),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Icon(
-                                    Icons.camera_alt_outlined,
-                                    size: 30.0,
-                                  ),
+                                  fit: BoxFit.cover,
                                 ),
+                              )
+                                  : Container(
+                                height: 160,
+                                width: 160,
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                      color: Colors.black45, width: 2.0),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Icon(Icons.camera_alt_outlined,
+                                    size: 30.0),
                               ),
                             ),
-                  
-                      SizedBox(height: 30.0),
-                  
-                      // Show selected category
-                      Center(
-                        child: Text(
-                          "Selected Category: ${widget.category}",
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green,
-                          ),
+                            SizedBox(height: 20),
+                            Text(
+                              "Selected Category: ${widget.category}",
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                  
-                      SizedBox(height: 20.0),
-                  
-                      //Address
-                      SizedBox(height: 30.0),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 20.0, right: 20.0),
+                      SizedBox(height: 30),
+                      Align(
+                        alignment: Alignment.centerLeft,
                         child: Text(
-                          "Enter your Address you want the time to be picked.",
+                          "Select a pickup location near you:",
                           style: AppWidget.normalTextStyle(18.0),
                         ),
                       ),
-                      SizedBox(height: 10.0),
+                      SizedBox(height: 10),
                       Container(
-                        margin: EdgeInsets.only(left: 20.0, right: 20.0),
-                        child: Material(
-                          elevation: 3.0,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: TextField(
-                              controller: addresscontroller,
-                              decoration: InputDecoration(
-                                border: InputBorder.none,
-                                prefixIcon: Icon(
-                                  Icons.location_on_outlined,
-                                  color: Colors.green,
-                                ),
-                                hintText: "Enter Address",
-                                // hintStyle: AppWidget.normalTextStyle(16.0),
-                              ),
-                            ),
-                          ),
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 12.0, vertical: 4.0),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          border:
+                          Border.all(color: Colors.black26, width: 1.5),
+                        ),
+                        child: DropdownButton<String>(
+                          isExpanded: true,
+                          value: selectedLocation,
+                          underline: SizedBox(),
+                          items: sortedLocations.map((loc) {
+                            return DropdownMenuItem<String>(
+                              value: loc["name"],
+                              child: Text(
+                                  "${loc["name"]} - ${loc["distance"].toStringAsFixed(2)} km"),
+                            );
+                          }).toList(),
+                          onChanged: (val) {
+                            setState(() {
+                              selectedLocation = val;
+                              addresscontroller.text = val ?? "";
+                            });
+                          },
                         ),
                       ),
-                  
-                      //Quantity
-                      SizedBox(height: 40.0),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 20.0, right: 20.0),
+                      SizedBox(height: 30),
+                      Align(
+                        alignment: Alignment.centerLeft,
                         child: Text(
-                          "Enter the Quantity of the items to be picked.",
+                          "Enter the Quantity of the items to be picked:",
                           style: AppWidget.normalTextStyle(18.0),
                         ),
                       ),
-                      SizedBox(height: 10.0),
-                      Container(
-                        margin: EdgeInsets.only(left: 20.0, right: 20.0),
-                        child: Material(
-                          elevation: 3.0,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: TextField(
-                              controller: quantitycontroller,
-                              decoration: InputDecoration(
-                                border: InputBorder.none,
-                                prefixIcon: Icon(
-                                  Icons.inventory,
-                                  color: Colors.green,
-                                ),
-                                hintText: "Enter Quantity",
-                                // hintStyle: AppWidget.normalTextStyle(16.0),
-                              ),
-                            ),
-                          ),
+                      SizedBox(height: 10),
+                      TextField(
+                        controller: quantitycontroller,
+                        decoration: InputDecoration(
+                          prefixIcon: Icon(Icons.inventory, color: Colors.green),
+                          hintText: "Enter Quantity",
+                          border: OutlineInputBorder(),
                         ),
                       ),
-                      //Quantity code finished
-                      SizedBox(height: 40.0),
+                      SizedBox(height: 30),
                       GestureDetector(
                         onTap: () async {
-                          if (addresscontroller.text != "" && quantitycontroller.text != "") {
+                          if (addresscontroller.text != "" &&
+                              quantitycontroller.text != "") {
                             String itemId = randomAlphaNumeric(10);
-                  
-                            // for the firebase storage
-                          // if (selectedImage != null &&
-                          //     addresscontroller.text.isNotEmpty &&
-                          //     quantitycontroller.text.isNotEmpty) {
-                          //   String itemId = randomAlphaNumeric(10);
-                          //   Reference firebaseStorageRef = FirebaseStorage
-                          //       .instance
-                          //       .ref()
-                          //       .child("blogImage")
-                          //       .child(itemId);
-                          //   final UploadTask task = firebaseStorageRef.putFile(
-                          //     selectedImage!,
-                          //   );
-                          //   var downloadUrl = await (await task).ref
-                          //       .getDownloadURL();
-                  
                             Map<String, dynamic> addItem = {
-                              // "Image": downloadUrl,
                               "Category": widget.category,
-                              "Image": "",
+                              "Image": "", // Placeholder
                               "Address": addresscontroller.text,
                               "Quantity": quantitycontroller.text,
                               "UserId": id,
                               "Name": name,
                               "Status": "Pending",
                             };
-                            await DatabaseMethods().addUserUploadItem(
-                              addItem,
-                              id!,
-                              itemId,
-                            );
+                            await DatabaseMethods()
+                                .addUserUploadItem(addItem, id!, itemId);
                             await DatabaseMethods().addAdminItem(addItem, itemId);
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                backgroundColor: Colors.green,
-                                content: Text(
-                                  "Item has been uploaded Successfully!",
-                                  style: AppWidget.whiteTextStyle(22.0),
-                                ),
-                              ),
+                                  content: Text("Item uploaded successfully!")),
                             );
                             setState(() {
-                              addresscontroller.text = "";
-                              quantitycontroller.text = "";
-                              selectedImage= null;
+                              addresscontroller.clear();
+                              quantitycontroller.clear();
+                              selectedImage = null;
                             });
-                            Future.delayed(Duration(milliseconds: 800), () {
-                              Navigator.pop(context);
-                            });
+                            Future.delayed(
+                                Duration(milliseconds: 800),
+                                    () => Navigator.pop(context));
                           }
                         },
-                        child: Center(
-                          child: Material(
-                            elevation: 2.0,
+                        child: Container(
+                          height: 50,
+                          width: MediaQuery.of(context).size.width / 1.5,
+                          decoration: BoxDecoration(
+                            color: Colors.green,
                             borderRadius: BorderRadius.circular(20),
-                            child: Container(
-                              height: 50.0,
-                              width: MediaQuery.of(context).size.width / 1.5,
-                              decoration: BoxDecoration(
-                                color: Colors.green,
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  "Upload",
-                                  style: AppWidget.whiteTextStyle(26.0),
-                                ),
-                              ),
-                            ),
+                          ),
+                          child: Center(
+                            child: Text("Upload",
+                                style: AppWidget.whiteTextStyle(22.0)),
                           ),
                         ),
                       ),

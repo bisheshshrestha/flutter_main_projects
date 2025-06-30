@@ -32,7 +32,18 @@ class _UploadProfilePageState extends State<UploadProfilePage> {
   void initState() {
     super.initState();
     _imageUrl = widget.googlePhotoUrl;
+    _loadSavedName();
   }
+
+  Future<void> _loadSavedName() async {
+    final savedName = await SharedPreferenceHelper().getUserName();
+    if (savedName != null && savedName.isNotEmpty) {
+      setState(() {
+        _nameController.text = savedName;
+      });
+    }
+  }
+
 
   Future<void> _pickImage() async {
     final picked = await _picker.pickImage(source: ImageSource.gallery);
