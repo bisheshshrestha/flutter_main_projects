@@ -235,7 +235,8 @@ class _HomePageState extends State<HomePage> {
               color: Color(0xFFE0F2F1),
             ),
             padding: EdgeInsets.all(8),
-            child: Image.asset("assets/images/chips.png", fit: BoxFit.contain),
+            child: Image.network(ds['Image']),
+            // child: Image.asset("assets/images/chips.png", fit: BoxFit.contain),
           ),
 
           SizedBox(width: 16),
@@ -264,7 +265,7 @@ class _HomePageState extends State<HomePage> {
                     Icon(Icons.layers, color: Colors.orange[700], size: 20),
                     SizedBox(width: 6),
                     Text(
-                      "${ds["Quantity"]} kg",
+                      "${ds["Quantity"]}",
                       style: AppWidget.normalTextStyle(16.0),
                     ),
                   ],
