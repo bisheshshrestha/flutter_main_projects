@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:recycle_mate/pages/profile.dart';
 import 'package:recycle_mate/pages/upload_item.dart';
 import 'package:recycle_mate/services/database.dart';
 import 'package:recycle_mate/services/shared_pref.dart';
@@ -113,9 +114,9 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildCategories() {
     final categories = [
-      {"image": "assets/images/plastic.png", "label": "Plastic"},
+      {"image": "assets/images/plastic.png", "label": "Plastic Bottle"},
       {"image": "assets/images/paper.png", "label": "Paper"},
-      {"image": "assets/images/battery.png", "label": "Battery"},
+      // {"image": "assets/images/battery.png", "label": "Battery"},
       {"image": "assets/images/glass.png", "label": "Glass"},
     ];
 
@@ -235,7 +236,9 @@ class _HomePageState extends State<HomePage> {
               color: Color(0xFFE0F2F1),
             ),
             padding: EdgeInsets.all(8),
-            child: Image.network(ds['Image']),
+            child: ds["Image"] != "" ?
+              Image.network(ds['Image'])
+                : Image.asset("assets/images/chips.png", fit: BoxFit.contain),
             // child: Image.asset("assets/images/chips.png", fit: BoxFit.contain),
           ),
 

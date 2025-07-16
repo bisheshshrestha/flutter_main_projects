@@ -79,9 +79,15 @@ class _AdminApprovalState extends State<AdminApproval> {
                           border: Border.all(color: Colors.black45, width: 2.0),
                           borderRadius: BorderRadius.circular(20.0),
                         ),
-                        child: Image.asset(
+                        child: ds["Image"] != "" ?
+                        Image.network(
+                           ds["Image"],
+                          height: 120,
+                          width: 120,
+                          fit: BoxFit.contain,
+                        )
+                        : Image.asset(
                           "assets/images/coca.png",
-                          // ds["Image"],
                           height: 120,
                           width: 120,
                           fit: BoxFit.contain,
