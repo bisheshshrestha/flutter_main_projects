@@ -7,7 +7,6 @@ import 'package:random_string/random_string.dart';
 import 'package:recycle_mate/services/database.dart';
 import 'package:recycle_mate/services/shared_pref.dart';
 import 'package:recycle_mate/services/widget_support.dart';
-import 'package:recycle_mate/services/apis.dart';
 
 class UploadItem extends StatefulWidget {
   final String category;
@@ -225,19 +224,9 @@ class _UploadItemState extends State<UploadItem> {
                           if (addresscontroller.text != "" &&
                               quantitycontroller.text != "") {
                             String itemId = randomAlphaNumeric(10);
-
-                            // Upload image to ImageKit
-                            String? imageUrl = await ImageKitApi.uploadImage(selectedImage!);
-
-                            if (imageUrl == null) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text("Image upload failed. Try again.")),
-                              );
-                              return;
-                            }
                             Map<String, dynamic> addItem = {
                               "Category": widget.category,
-                              "Image": imageUrl,
+                              "Image": "", // Placeholder
                               "Address": addresscontroller.text,
                               "Quantity": quantitycontroller.text,
                               "UserId": id,
