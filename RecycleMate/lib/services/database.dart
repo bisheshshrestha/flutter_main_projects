@@ -36,6 +36,23 @@ class DatabaseMethods {
         .update({"Status":"Approved"});
   }
 
+  Future rejectAdminRequest(String id) async{
+    return await FirebaseFirestore.instance
+        .collection("requests")
+        .doc(id)
+        .update({"Status":"Rejected"});
+  }
+
+  Future rejectUserRequest(String id, String itemId) async{
+    return await FirebaseFirestore.instance
+        .collection("users")
+        .doc(id)
+        .collection("items").doc(itemId)
+        .update({"Status":"Rejected"});
+  }
+
+
+
   Future updateUserRequests(String id, String itemId) async{
     return await FirebaseFirestore.instance
         .collection("users")
@@ -106,6 +123,14 @@ class DatabaseMethods {
         .doc(id)
         .collection("items")
         .where("Status",isEqualTo: "Pending")
+        .snapshots();
+  }
+  Future<Stream<QuerySnapshot>> getUserRequestsHistory(String id) async {
+    return FirebaseFirestore.instance
+        .collection("users")
+        .doc(id)
+        .collection("items")
+        .orderBy("createdAt", descending: true)
         .snapshots();
   }
 

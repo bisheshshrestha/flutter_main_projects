@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:recycle_mate/services/auth.dart';
 import 'package:recycle_mate/services/widget_support.dart';
+import 'package:recycle_mate/pages/bottomnav.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -10,70 +11,240 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+  final _formKey = GlobalKey<FormState>();
+  bool isLogin = true;
+  bool _obscure = true;
+
+  final TextEditingController _name = TextEditingController();
+  final TextEditingController _email = TextEditingController();
+  final TextEditingController _password = TextEditingController();
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _email.dispose();
+    _password.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleEmailAuth() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    try {
+      if (isLogin) {
+        await AuthMethods().signInWithEmail(
+          email: _email.text.trim(),
+          password: _password.text,
+        );
+      } else {
+        await AuthMethods().signUpWithEmail(
+          email: _email.text.trim(),
+          password: _password.text,
+          name: _name.text.trim(),
+        );
+      }
+      if (mounted) {
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => BottomNav()));
+      }
+    } on Exception catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
+  }
+
+  Future<void> _resetPassword() async {
+    final email = _email.text.trim();
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Enter your email first")));
+      return;
+    }
+    try {
+      await AuthMethods().sendPasswordResetEmail(email);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Password reset email sent")));
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        child: Column(
-          children: [
-            Center(
-              child: Image.asset(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Column(
+            children: [
+              // Hero images and title
+              Image.asset(
                 "assets/images/login.png",
-                height: 300,
+                height: 220,
                 width: MediaQuery.of(context).size.width,
                 fit: BoxFit.cover,
               ),
-            ),
-            SizedBox(height: 20),
-            Image.asset(
-              "assets/images/recycle1.png",
-              height: 120,
-              width: 120,
-              fit: BoxFit.cover,
-            ),
-            SizedBox(height: 20),
-            Text(
-              "Reduce. Reuse. Recycle.",
-              style: AppWidget.headlineTextStyle(25.0),
-            ),
-            Text("Repeat!", style: AppWidget.greenTextStyle(35.0)),
-            SizedBox(height: 30),
-            Text(
-              "Every item you recycle\n makes a difference!",
-              textAlign: TextAlign.center,
-              style: AppWidget.normalTextStyle(20.0),
-            ),
-            Text("Get Started", style: AppWidget.greenTextStyle(24.0)),
-            SizedBox(height: 50,),
-            GestureDetector(
-              onTap: (){
-                AuthMethods().signInwithGoogle(context);
-              },
-              child: Container(
-                margin:EdgeInsets.only(left: 20.0, right: 20.0),
-                child: Material(
-                  elevation: 4.0,
+              const SizedBox(height: 10),
+              Image.asset("assets/images/recycle1.png", height: 90, width: 90, fit: BoxFit.cover),
+              const SizedBox(height: 10),
+              Text("Reduce. Reuse. Recycle.", style: AppWidget.headlineTextStyle(22.0)),
+              Text("Repeat!", style: AppWidget.greenTextStyle(30.0)),
+              const SizedBox(height: 16),
+              Text(
+                "Every item you recycle makes a difference!",
+                textAlign: TextAlign.center,
+                style: AppWidget.normalTextStyle(16.0),
+              ),
+              const SizedBox(height: 24),
+
+              // Toggle
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ChoiceChip(
+                    label: const Text("Login"),
+                    selected: isLogin,
+                    onSelected: (v) => setState(() => isLogin = true),
+                  ),
+                  const SizedBox(width: 12),
+                  ChoiceChip(
+                    label: const Text("Register"),
+                    selected: !isLogin,
+                    onSelected: (v) => setState(() => isLogin = false),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 16),
+
+              // Form
+              Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    if (!isLogin)
+                      TextFormField(
+                        controller: _name,
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(
+                          labelText: "Full Name",
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.person),
+                        ),
+                        validator: (v) {
+                          if (isLogin) return null;
+                          if (v == null || v.trim().length < 2) {
+                            return "Enter a valid name";
+                          }
+                          return null;
+                        },
+                      ),
+                    if (!isLogin) const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _email,
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                      decoration: const InputDecoration(
+                        labelText: "Email",
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.email),
+                      ),
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return "Email is required";
+                        final ok = RegExp(r'^[^@]+@[^@]+\.[^@]+$').hasMatch(v.trim());
+                        return ok ? null : "Enter a valid email";
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _password,
+                      obscureText: _obscure,
+                      decoration: InputDecoration(
+                        labelText: "Password",
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.lock),
+                        suffixIcon: IconButton(
+                          icon: Icon(_obscure ? Icons.visibility : Icons.visibility_off),
+                          onPressed: () => setState(() => _obscure = !_obscure),
+                        ),
+                      ),
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return "Password is required";
+                        if (v.length < 6) return "At least 6 characters";
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    if (isLogin)
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: _resetPassword,
+                          child: const Text("Forgot password?"),
+                        ),
+                      ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: _handleEmailAuth,
+                        child: Text(
+                          isLogin ? "Login" : "Create Account",
+                          style: AppWidget.whiteTextStyle(20.0),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+              Text("or", style: AppWidget.normalTextStyle(16.0)),
+              const SizedBox(height: 10),
+
+              // Google Sign-In button
+              GestureDetector(
+                onTap: () {
+                  AuthMethods().signInwithGoogle(context);
+                },
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 8.0),
+                  child: Material(
+                    elevation: 4.0,
                     borderRadius: BorderRadius.circular(30),
-                  child: Container(
-                    padding: EdgeInsets.only(left: 20.0),
-                    decoration: BoxDecoration(color: Colors.green,
-                    borderRadius: BorderRadius.circular(30)),
-                    child: Row(children: [
-                      Container(
-                          padding: EdgeInsets.all(5.0),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(50)
+                    child: Container(
+                      padding: const EdgeInsets.only(left: 16.0, right: 12.0),
+                      decoration: BoxDecoration(
+                        color: Colors.green,
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      height: 56,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6.0),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(50),
+                            ),
+                            child: Image.asset("assets/images/google.png", height: 36, width: 36, fit: BoxFit.cover),
                           ),
-                          child: Image.asset("assets/images/google.png",height: 50,width: 50,fit: BoxFit.cover,)),
-                      SizedBox(height: 20.0,),
-                      Text("Sign in with Google",style: AppWidget.whiteTextStyle(25.0),),
-                    ]),
+                          const SizedBox(width: 12.0),
+                          Text("Sign in with Google", style: AppWidget.whiteTextStyle(20.0)),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

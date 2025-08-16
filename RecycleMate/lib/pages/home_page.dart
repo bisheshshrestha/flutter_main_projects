@@ -51,7 +51,7 @@ class _HomePageState extends State<HomePage> {
               SizedBox(height: 16),
               _buildCategories(),
               SizedBox(height: 30),
-              _buildSectionTitle("Pending Requests"),
+              _buildSectionTitle("Requests History"),
               SizedBox(height: 16),
               _buildPendingRequests(),
             ],
@@ -237,7 +237,7 @@ class _HomePageState extends State<HomePage> {
             ),
             padding: EdgeInsets.all(8),
             child: ds["Image"] != "" ?
-              Image.network(ds['Image'])
+            Image.network(ds['Image'])
                 : Image.asset("assets/images/chips.png", fit: BoxFit.contain),
             // child: Image.asset("assets/images/chips.png", fit: BoxFit.contain),
           ),

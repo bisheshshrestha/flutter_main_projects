@@ -177,7 +177,7 @@ class _AdminReedemState extends State<AdminReedem> {
                             color: Colors.black,
                             borderRadius: BorderRadius.circular(10.0),
                           ),
-                          child: Center(child: Text("Approved",style: AppWidget.whiteTextStyle(20.0),)),
+                          child: Center(child: Text("Approve",style: AppWidget.whiteTextStyle(20.0),)),
                         ),
                       )
                     ],
