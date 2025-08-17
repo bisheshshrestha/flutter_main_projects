@@ -8,13 +8,14 @@ import 'package:random_string/random_string.dart';
 import 'package:recycle_mate/services/database.dart';
 import 'package:recycle_mate/services/shared_pref.dart';
 import 'package:recycle_mate/services/widget_support.dart';
-import 'package:recycle_mate/services/apis.dart'; // ImageKitApi
+import 'package:recycle_mate/services/apis.dart';
+import 'package:recycle_mate/services/ml_classification.dart';
 
 class UploadItem extends StatefulWidget {
-  final String category;
+  final String? category; // Make optional for ML detection
   final String id;
 
-  UploadItem({required this.category, required this.id});
+  UploadItem({this.category, required this.id});
 
   @override
   State<UploadItem> createState() => _UploadItemState();
@@ -27,11 +28,19 @@ class _UploadItemState extends State<UploadItem> {
 
   File? selectedImage;
   String? id, name;
+  bool _loading = false;
+  ClassificationResult? _mlResult;
 
-  // Dynamic quantity + points
-  late final bool _isPlastic;
-  late final String _unitLabel; // 'piece' or 'kg'
-  late final double _rate; // points per unit
+  // All items are in kg now
+  String? _selectedCategory;
+  final Map<String, double> _pointsPerKg = {
+    'Plastic': 5.0,
+    'Paper': 10.0,
+    'Glass': 20.0,
+    'Cardboard': 8.0,
+    'Metal': 15.0,
+  };
+
   double _qty = 0;
   int _totalPoints = 0;
 
@@ -48,21 +57,10 @@ class _UploadItemState extends State<UploadItem> {
   @override
   void initState() {
     super.initState();
-    // Set unit + rate by category
-    final cat = widget.category.toLowerCase();
-    _isPlastic = cat.contains('plastic'); // covers "Plastic Bottle"
-    _unitLabel = _isPlastic ? 'piece' : 'kg';
-    _rate = _isPlastic
-        ? 2 // plastic: 2 points per piece
-        : (cat.contains('paper')
-        ? 10 // paper: 10 points per kg
-        : 20 // glass: 20 points per kg
-    );
-
+    _selectedCategory = widget.category; // Use passed category if available
     _loadSharedPref();
     _fetchAndSortLocationsByDistance();
-
-    // Listen for quantity changes to recalc points
+    _initML();
     quantitycontroller.addListener(_onQtyChanged);
   }
 
@@ -71,7 +69,20 @@ class _UploadItemState extends State<UploadItem> {
     quantitycontroller.removeListener(_onQtyChanged);
     quantitycontroller.dispose();
     addresscontroller.dispose();
+    MLClassificationService.dispose();
     super.dispose();
+  }
+
+  Future<void> _initML() async {
+    try {
+      await MLClassificationService.initialize();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to initialize ML: $e')),
+        );
+      }
+    }
   }
 
   void _onQtyChanged() {
@@ -83,14 +94,11 @@ class _UploadItemState extends State<UploadItem> {
       });
       return;
     }
-    // Plastic piece -> int; kg -> double
-    final parsed = _isPlastic ? double.tryParse(raw) : double.tryParse(raw);
-    final q = (parsed ?? 0);
-    // For plastic, only whole pieces count
-    final effectiveQty = _isPlastic ? q.floor().toDouble() : q;
+    final parsed = double.tryParse(raw) ?? 0;
+    final rate = _pointsPerKg[_selectedCategory] ?? 0.0;
     setState(() {
-      _qty = effectiveQty;
-      _totalPoints = (_rate * effectiveQty).round();
+      _qty = parsed;
+      _totalPoints = (rate * parsed).round();
     });
   }
 
@@ -100,11 +108,77 @@ class _UploadItemState extends State<UploadItem> {
     setState(() {});
   }
 
-  Future<void> _pickImage() async {
-    final image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+  Future<void> _pickImage(ImageSource source) async {
+    final image = await _picker.pickImage(source: source, imageQuality: 85);
     if (image != null) {
       selectedImage = File(image.path);
-      setState(() {});
+      setState(() {
+        _mlResult = null; // Reset ML result when new image is selected
+      });
+
+      // Automatically run ML classification after image selection
+      await _runMLClassification();
+    }
+  }
+
+  void _showImageSourceDialog() {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('Gallery'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _pickImage(ImageSource.gallery);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_camera),
+                title: const Text('Camera'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _pickImage(ImageSource.camera);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _runMLClassification() async {
+    if (selectedImage == null) return;
+
+    try {
+      setState(() => _loading = true);
+      final result = await MLClassificationService.classifyImage(selectedImage!);
+
+      setState(() {
+        _mlResult = result;
+        if (result.success && result.category != null) {
+          _selectedCategory = result.category;
+          _onQtyChanged(); // Recalculate points with new category
+        }
+      });
+
+      if (!result.success) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result.error ?? 'Classification failed')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Classification failed: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -145,22 +219,29 @@ class _UploadItemState extends State<UploadItem> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please select an image")));
       return;
     }
+    if (_selectedCategory == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please select a category")));
+      return;
+    }
     if (addresscontroller.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please select a pickup location")));
       return;
     }
     if (_qty <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Enter a valid ${_isPlastic ? 'number of pieces' : 'weight in kg'}")),
+        const SnackBar(content: Text("Enter a valid weight in kg")),
       );
       return;
     }
 
+    setState(() => _loading = true);
+
     final itemId = randomAlphaNumeric(10);
 
-    // Upload image to ImageKit (your apis.dart)
+    // Upload image to ImageKit
     final imageUrl = await ImageKitApi.uploadImage(selectedImage!);
     if (imageUrl == null) {
+      setState(() => _loading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Image upload failed. Try again.")),
       );
@@ -168,41 +249,52 @@ class _UploadItemState extends State<UploadItem> {
     }
 
     final addItem = {
-      "Category": widget.category,
+      "Category": _selectedCategory,
       "Image": imageUrl,
       "Address": addresscontroller.text.trim(),
-      "Quantity": _isPlastic ? _qty.toInt() : _qty, // store int for plastic, double for kg
-      "QuantityUnit": _unitLabel, // 'piece' or 'kg'
+      "Quantity": _qty,
+      "QuantityUnit": "kg",
       "UserId": id,
       "Name": name,
       "Status": "Pending",
       "Points": _totalPoints,
-      "CreatedAt": FieldValue.serverTimestamp()
-      // optional, used for display/admin reference
-      // If you also want ordered history, add createdAt on client (or on admin when approved)
-      // "createdAt": FieldValue.serverTimestamp(), // requires cloud_firestore import
+      "CreatedAt": FieldValue.serverTimestamp(),
+      // ML data for reference
+      if (_mlResult != null) "MLData": {
+        "predictedLabel": _mlResult!.predictedLabel,
+        "confidence": _mlResult!.confidence,
+        "success": _mlResult!.success,
+      },
     };
 
-    await DatabaseMethods().addUserUploadItem(addItem, id!, itemId);
-    await DatabaseMethods().addAdminItem(addItem, itemId);
+    try {
+      await DatabaseMethods().addUserUploadItem(addItem, id!, itemId);
+      await DatabaseMethods().addAdminItem(addItem, itemId);
 
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Item uploaded successfully!")));
-    setState(() {
-      addresscontroller.clear();
-      quantitycontroller.clear();
-      selectedImage = null;
-      _qty = 0;
-      _totalPoints = 0;
-    });
-    await Future.delayed(const Duration(milliseconds: 600));
-    if (mounted) Navigator.pop(context);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Item uploaded successfully!")));
+      setState(() {
+        addresscontroller.clear();
+        quantitycontroller.clear();
+        selectedImage = null;
+        _selectedCategory = widget.category; // Reset to original category if passed
+        _mlResult = null;
+        _qty = 0;
+        _totalPoints = 0;
+      });
+      await Future.delayed(const Duration(milliseconds: 600));
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Upload failed: $e")),
+      );
+    } finally {
+      setState(() => _loading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final unitHint = _isPlastic ? "Enter number of pieces" : "Enter weight in kg (e.g. 1.5)";
-
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -232,7 +324,7 @@ class _UploadItemState extends State<UploadItem> {
                       child: Column(
                         children: [
                           GestureDetector(
-                            onTap: _pickImage,
+                            onTap: _showImageSourceDialog,
                             child: selectedImage != null
                                 ? ClipRRect(
                               borderRadius: BorderRadius.circular(20),
@@ -248,14 +340,29 @@ class _UploadItemState extends State<UploadItem> {
                               child: const Icon(Icons.camera_alt_outlined, size: 30.0),
                             ),
                           ),
-                          const SizedBox(height: 20),
-                          Text(
-                            "Selected Category: ${widget.category}",
-                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green),
-                          ),
+                          const SizedBox(height: 12),
+                          if (_loading)
+                            const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                                SizedBox(width: 8),
+                                Text('Detecting category...'),
+                              ],
+                            ),
                         ],
                       ),
                     ),
+
+                    const SizedBox(height: 20),
+
+                    // ML Result Card
+                    if (_mlResult != null) _buildMLResultCard(),
+
+                    const SizedBox(height: 20),
+
+                    // Category Selection
+                    _buildCategorySelection(),
 
                     const SizedBox(height: 30),
 
@@ -292,74 +399,48 @@ class _UploadItemState extends State<UploadItem> {
 
                     const SizedBox(height: 30),
 
-                    // Quantity input with dynamic unit
+                    // Quantity input
                     Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
-                        "Enter the quantity (${_unitLabel}):",
+                        "Enter the quantity (kg):",
                         style: AppWidget.normalTextStyle(18.0),
                       ),
                     ),
                     const SizedBox(height: 10),
                     TextField(
                       controller: quantitycontroller,
-                      keyboardType: TextInputType.numberWithOptions(
-                        decimal: !_isPlastic, // allow decimal for kg
-                        signed: false,
-                      ),
-                      decoration: InputDecoration(
-                        prefixIcon: const Icon(Icons.inventory, color: Colors.green),
-                        hintText: unitHint,
-                        border: const OutlineInputBorder(),
-                        suffixText: _unitLabel,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: false),
+                      decoration: const InputDecoration(
+                        prefixIcon: Icon(Icons.inventory, color: Colors.green),
+                        hintText: "Enter weight in kg (e.g. 1.5)",
+                        border: OutlineInputBorder(),
+                        suffixText: "kg",
                       ),
                     ),
 
                     const SizedBox(height: 14),
 
-                    // Notes and dynamic points
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF6F6F6),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.black12),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text("Points Guide", style: AppWidget.headlineTextStyle(18.0)),
-                          const SizedBox(height: 8),
-                          const Text("• Plastic bottle: 1 piece = 2 points"),
-                          const Text("• Paper: 1 kg = 10 points"),
-                          const Text("• Glass: 1 kg = 20 points"),
-                          const SizedBox(height: 10),
-                          Row(
-                            children: [
-                              Text("You will earn: ", style: AppWidget.normalTextStyle(16.0)),
-                              Text("$_totalPoints points",
-                                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green)),
-                            ],
-                          ),
-                          Text(
-                            "(Final points are awarded after admin approval)",
-                            style: AppWidget.normalTextStyle(12.0).copyWith(color: Colors.black54),
-                          ),
-                        ],
-                      ),
-                    ),
+                    // Points guide and calculation
+                    _buildPointsCard(),
 
                     const SizedBox(height: 30),
 
                     // Submit
                     GestureDetector(
-                      onTap: _submit,
+                      onTap: _loading ? null : _submit,
                       child: Container(
                         height: 50,
                         width: MediaQuery.of(context).size.width / 1.5,
-                        decoration: BoxDecoration(color: Colors.green, borderRadius: BorderRadius.circular(20)),
-                        child: Center(child: Text("Upload", style: AppWidget.whiteTextStyle(22.0))),
+                        decoration: BoxDecoration(
+                          color: _loading ? Colors.grey : Colors.green,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Center(
+                          child: _loading
+                              ? const CircularProgressIndicator(color: Colors.white)
+                              : Text("Upload", style: AppWidget.whiteTextStyle(22.0)),
+                        ),
                       ),
                     ),
                   ],
@@ -368,6 +449,136 @@ class _UploadItemState extends State<UploadItem> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildMLResultCard() {
+    return Card(
+      elevation: 4,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text('Prediction Result', style: AppWidget.headlineTextStyle(18.0)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (_mlResult!.success) ...[
+              Text(
+                'Detected: ${_mlResult!.category}',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green),
+              ),
+              Text(
+                'Confidence: ${(_mlResult!.confidence! * 100).toStringAsFixed(1)}%',
+                style: const TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+              if (_mlResult!.allPredictions != null && _mlResult!.allPredictions!.length > 1) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Other possibilities: ${_mlResult!.allPredictions!.skip(1).take(2).map((e) => '${e.label} (${(e.confidence * 100).toStringAsFixed(0)}%)').join(', ')}',
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ],
+            ] else ...[
+              Text(
+                'Detection failed: ${_mlResult!.error}',
+                style: const TextStyle(fontSize: 14, color: Colors.red),
+              ),
+              if (_mlResult!.allPredictions != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Top predictions: ${_mlResult!.allPredictions!.take(3).map((e) => '${e.label} (${(e.confidence * 100).toStringAsFixed(0)}%)').join(', ')}',
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ],
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategorySelection() {
+    final categories = MLClassificationService.getAvailableCategories();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Text("Category:", style: AppWidget.normalTextStyle(18.0)),
+        ),
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.black26, width: 1.5),
+          ),
+          child: DropdownButton<String>(
+            isExpanded: true,
+            value: _selectedCategory,
+            underline: const SizedBox(),
+            hint: const Text("Select category"),
+            items: categories.map((cat) {
+              return DropdownMenuItem<String>(
+                value: cat,
+                child: Text(cat),
+              );
+            }).toList(),
+            onChanged: (val) {
+              setState(() {
+                _selectedCategory = val;
+                _onQtyChanged(); // Recalculate points
+              });
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPointsCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.green.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.green.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("Points Guide (per kg)", style: AppWidget.headlineTextStyle(18.0)),
+          const SizedBox(height: 12),
+          ...(_pointsPerKg.entries.map((entry) => Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text("• ${entry.key}: ${entry.value.toStringAsFixed(0)} points/kg"),
+          ))),
+          const SizedBox(height: 12),
+          const Divider(),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text("You will earn:", style: AppWidget.normalTextStyle(16.0)),
+              Text(
+                "$_totalPoints points",
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.green),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            "(Final points awarded after admin approval)",
+            style: AppWidget.normalTextStyle(12.0).copyWith(color: Colors.black54),
+          ),
+        ],
       ),
     );
   }

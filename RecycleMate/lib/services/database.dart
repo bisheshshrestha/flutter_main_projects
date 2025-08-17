@@ -125,13 +125,13 @@ class DatabaseMethods {
         .where("Status",isEqualTo: "Pending")
         .snapshots();
   }
-  Future<Stream<QuerySnapshot>> getUserRequestsHistory(String id) async {
+
+  Future<Stream<QuerySnapshot>> getUserAllRequests(String id) async {
     return FirebaseFirestore.instance
         .collection("users")
         .doc(id)
         .collection("items")
-        .orderBy("createdAt", descending: true)
+        .orderBy("CreatedAt", descending: true)
         .snapshots();
   }
-
 }

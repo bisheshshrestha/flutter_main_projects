@@ -348,63 +348,68 @@ class _PointsState extends State<Points> {
           itemCount: snapshot.data.docs.length,
           itemBuilder: (context, index) {
             DocumentSnapshot ds = snapshot.data.docs[index];
-            return Container(
-              padding: const EdgeInsets.all(10),
-              margin: const EdgeInsets.only(left: 16.0, right: 16.0),
-              width: MediaQuery.of(context).size.width,
-              decoration: BoxDecoration(
-                color: Color.fromARGB(255, 233, 233, 249),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.black,
-                      borderRadius: BorderRadius.circular(10.0),
-                    ),
-                    child: Text(
-                      ds["Date"],
-                      textAlign: TextAlign.center,
-                      style: AppWidget.whiteTextStyle(18.0),
-                    ),
+            return Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  margin: const EdgeInsets.only(left: 16.0, right: 16.0),
+                  width: MediaQuery.of(context).size.width,
+                  decoration: BoxDecoration(
+                    color: Color.fromARGB(255, 233, 233, 249),
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                  SizedBox(width: 20.0),
-                  Column(
+                  child: Row(
                     children: [
-                      Text(
-                        "Redeem Points",
-                        style: AppWidget.normalTextStyle(18.0),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.black,
+                          borderRadius: BorderRadius.circular(10.0),
+                        ),
+                        child: Text(
+                          ds["Date"],
+                          textAlign: TextAlign.center,
+                          style: AppWidget.whiteTextStyle(18.0),
+                        ),
                       ),
-                      Text(
-                        ds["Points"],
-                        style: AppWidget.greenTextStyle(24.0),
+                      SizedBox(width: 20.0),
+                      Column(
+                        children: [
+                          Text(
+                            "Redeem Points",
+                            style: AppWidget.normalTextStyle(18.0),
+                          ),
+                          Text(
+                            ds["Points"],
+                            style: AppWidget.greenTextStyle(24.0),
+                          ),
+                        ],
                       ),
+                      SizedBox(width: 25.0),
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: ds["Status"] == "Approved"
+                              ? Color.fromARGB(119, 165, 248, 121)
+                              : Color.fromARGB(48, 241, 77, 66),
+                          borderRadius: BorderRadius.circular(10.0),
+                        ),
+                        child: Text(
+                          ds["Status"],
+                          style: TextStyle(
+                            color: ds["Status"] == "Approved"
+                                ? Colors.green
+                                : Colors.red,
+                            fontSize: 18.0,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      )
                     ],
                   ),
-                  SizedBox(width: 25.0),
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: ds["Status"] == "Approved"
-                          ? Color.fromARGB(119, 165, 248, 121)
-                          : Color.fromARGB(48, 241, 77, 66),
-                      borderRadius: BorderRadius.circular(10.0),
-                    ),
-                    child: Text(
-                      ds["Status"],
-                      style: TextStyle(
-                        color: ds["Status"] == "Approved"
-                            ? Colors.green
-                            : Colors.red,
-                        fontSize: 18.0,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  )
-                ],
-              ),
+                ),
+                SizedBox(height: 12),  // Adjust the height for the gap
+              ],
             );
           },
         );
