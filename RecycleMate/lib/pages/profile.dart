@@ -71,7 +71,7 @@ class _ProfileState extends State<Profile> {
     if (confirmed == true) {
       try {
         await AuthMethods().deleteUser();
-        await SharedPreferenceHelper().clearAll(); // Clear shared prefs after deleting account
+        await SharedPreferenceHelper().clearAll();
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => LoginPage()),
@@ -94,13 +94,15 @@ class _ProfileState extends State<Profile> {
         child: Column(
           children: [
             const SizedBox(height: 40),
-            // Top Bar
+
+            // Top Bar with Simple Back Arrow
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
                 children: [
-                  GestureDetector(
-                    onTap: () {
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_ios_new),
+                    onPressed: () {
                       if (Navigator.canPop(context)) {
                         Navigator.pop(context);
                       } else {
@@ -110,22 +112,6 @@ class _ProfileState extends State<Profile> {
                         );
                       }
                     },
-                    child: Material(
-                      elevation: 3.0,
-                      borderRadius: BorderRadius.circular(60),
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: Colors.black,
-                          borderRadius: BorderRadius.circular(60),
-                        ),
-                        child: const Icon(
-                          Icons.arrow_back_ios_new_rounded,
-                          color: Color(0xFFececf8),
-                          size: 30.0,
-                        ),
-                      ),
-                    ),
                   ),
                   const Spacer(),
                   Text("Profile Page", style: AppWidget.headlineTextStyle(25.0)),
@@ -192,7 +178,10 @@ class _ProfileState extends State<Profile> {
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: ElevatedButton.icon(
                 onPressed: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => UploadProfilePage(userId: id!)));
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => UploadProfilePage(userId: id!)),
+                  );
                 },
                 icon: const Icon(Icons.edit, color: Colors.black),
                 label: const Text("Update Profile", style: TextStyle(color: Colors.black)),
@@ -209,7 +198,7 @@ class _ProfileState extends State<Profile> {
 
             const SizedBox(height: 20),
 
-            // Logout Button (styled like update/delete)
+            // Logout Button
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: ElevatedButton.icon(

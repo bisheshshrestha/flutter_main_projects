@@ -59,7 +59,7 @@ class _RootPageState extends State<RootPage> {
         body: Center(child: CircularProgressIndicator()),
       );
     }
-    return isLoggedIn ? BottomNav() : LoginPage();
-    // return AdminLogin();
+    // return isLoggedIn ? BottomNav() : LoginPage();
+    return AdminLogin();
   }
 }

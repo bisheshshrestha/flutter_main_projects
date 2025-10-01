@@ -3,6 +3,7 @@ import 'package:recycle_mate/Admin/admin_approval.dart';
 import 'package:recycle_mate/Admin/admin_reedem.dart';
 import 'package:recycle_mate/Admin/admin_rejected.dart';
 import 'package:recycle_mate/Admin/admin_login.dart';
+import 'package:recycle_mate/Admin/admin_report.dart';
 import 'package:recycle_mate/services/auth.dart';
 import 'package:recycle_mate/services/shared_pref.dart';
 
@@ -108,6 +109,13 @@ class _AdminHomeState extends State<AdminHome> {
                       label: "Rejected",
                       onTap: () {
                         Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminRejected()));
+                      },
+                    ),
+                    _AdminCard(
+                      imagePath: "assets/images/monitor.png",
+                      label: "Reports",
+                      onTap: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminReport()));
                       },
                     ),
                   ],
