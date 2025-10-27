@@ -1,6 +1,10 @@
+// File: lib/pages/login_page.dart
+
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:recycle_mate/services/auth.dart';
 import 'package:recycle_mate/services/widget_support.dart';
+import 'package:recycle_mate/services/shared_pref.dart';
 import 'package:recycle_mate/pages/bottomnav.dart';
 
 class LoginPage extends StatefulWidget {
@@ -31,24 +35,42 @@ class _LoginPageState extends State<LoginPage> {
     if (!_formKey.currentState!.validate()) return;
 
     try {
+      // Perform email auth and get UserCredential
+      UserCredential credential;
       if (isLogin) {
-        await AuthMethods().signInWithEmail(
+        credential = await AuthMethods().signInWithEmail(
           email: _email.text.trim(),
           password: _password.text,
         );
       } else {
-        await AuthMethods().signUpWithEmail(
+        credential = await AuthMethods().signUpWithEmail(
           email: _email.text.trim(),
           password: _password.text,
           name: _name.text.trim(),
         );
       }
+
+      // Extract UID
+      final uid = credential.user?.uid;
+      if (uid == null) throw Exception('Failed to get user ID');
+
+      // Save to SharedPreferences
+      await SharedPreferenceHelper().saveUserId(uid);
+      await SharedPreferenceHelper().saveUserRole('user');
+
       if (mounted) {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => BottomNav()));
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const BottomNav()),
+        );
       }
+    } on FirebaseAuthException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message ?? 'Authentication failed')),
+      );
     } on Exception catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+        SnackBar(content: Text(e.toString())),
       );
     }
   }
@@ -56,16 +78,19 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _resetPassword() async {
     final email = _email.text.trim();
     if (email.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Enter your email first")));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text("Enter your email first")));
       return;
     }
     try {
       await AuthMethods().sendPasswordResetEmail(email);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Password reset email sent")));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text("Password reset email sent")));
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 
@@ -77,7 +102,6 @@ class _LoginPageState extends State<LoginPage> {
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           child: Column(
             children: [
-              // Hero images and title
               Image.asset(
                 "assets/images/login.png",
                 height: 220,
@@ -85,9 +109,17 @@ class _LoginPageState extends State<LoginPage> {
                 fit: BoxFit.cover,
               ),
               const SizedBox(height: 10),
-              Image.asset("assets/images/recycle1.png", height: 90, width: 90, fit: BoxFit.cover),
+              Image.asset(
+                "assets/images/recycle1.png",
+                height: 90,
+                width: 90,
+                fit: BoxFit.cover,
+              ),
               const SizedBox(height: 10),
-              Text("Reduce. Reuse. Recycle.", style: AppWidget.headlineTextStyle(22.0)),
+              Text(
+                "Reduce. Reuse. Recycle.",
+                style: AppWidget.headlineTextStyle(22.0),
+              ),
               Text("Repeat!", style: AppWidget.greenTextStyle(30.0)),
               const SizedBox(height: 16),
               Text(
@@ -96,8 +128,6 @@ class _LoginPageState extends State<LoginPage> {
                 style: AppWidget.normalTextStyle(16.0),
               ),
               const SizedBox(height: 24),
-
-              // Toggle
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -114,10 +144,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ],
               ),
-
               const SizedBox(height: 16),
-
-              // Form
               Form(
                 key: _formKey,
                 child: Column(
@@ -190,7 +217,8 @@ class _LoginPageState extends State<LoginPage> {
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
                         ),
                         onPressed: _handleEmailAuth,
                         child: Text(
@@ -202,15 +230,20 @@ class _LoginPageState extends State<LoginPage> {
                   ],
                 ),
               ),
-
               const SizedBox(height: 20),
               Text("or", style: AppWidget.normalTextStyle(16.0)),
               const SizedBox(height: 10),
-
-              // Google Sign-In button
               GestureDetector(
-                onTap: () {
-                  AuthMethods().signInwithGoogle(context);
+                onTap: () async {
+                  final uid = await AuthMethods().signInwithGoogle(context);
+                  if (uid != null) {
+                    await SharedPreferenceHelper().saveUserId(uid);
+                    await SharedPreferenceHelper().saveUserRole('user');
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (_) => const BottomNav()),
+                    );
+                  }
                 },
                 child: Container(
                   margin: const EdgeInsets.symmetric(horizontal: 8.0),
@@ -233,10 +266,12 @@ class _LoginPageState extends State<LoginPage> {
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(50),
                             ),
-                            child: Image.asset("assets/images/google.png", height: 36, width: 36, fit: BoxFit.cover),
+                            child: Image.asset("assets/images/google.png",
+                                height: 36, width: 36, fit: BoxFit.cover),
                           ),
                           const SizedBox(width: 12.0),
-                          Text("Sign in with Google", style: AppWidget.whiteTextStyle(20.0)),
+                          Text("Sign in with Google",
+                              style: AppWidget.whiteTextStyle(20.0)),
                         ],
                       ),
                     ),

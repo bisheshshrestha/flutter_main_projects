@@ -1,7 +1,10 @@
+// File: lib/Admin/admin_login.dart
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:recycle_mate/Admin/admin_home.dart';
 import 'package:recycle_mate/services/widget_support.dart';
+import 'package:recycle_mate/services/shared_pref.dart';
 
 class AdminLogin extends StatefulWidget {
   const AdminLogin({super.key});
@@ -154,7 +157,7 @@ class _AdminLoginState extends State<AdminLogin> {
     });
 
     try {
-      QuerySnapshot snapshot = await FirebaseFirestore.instance
+      final snapshot = await FirebaseFirestore.instance
           .collection("admin")
           .where('username', isEqualTo: usernamecontroller.text.trim())
           .where('password', isEqualTo: passwordcontroller.text.trim())
@@ -165,7 +168,9 @@ class _AdminLoginState extends State<AdminLogin> {
       });
 
       if (snapshot.docs.isNotEmpty) {
-        Navigator.push(
+        // Save role after successful admin lookup
+        await SharedPreferenceHelper().saveUserRole('admin');
+        Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const AdminHome()),
         );
@@ -175,8 +180,7 @@ class _AdminLoginState extends State<AdminLogin> {
             backgroundColor: Colors.red,
             content: Text(
               "Invalid credentials!",
-              style:
-              TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
             ),
           ),
         );
