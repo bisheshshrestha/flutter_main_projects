@@ -10,9 +10,11 @@ import 'package:recycle_mate/services/shared_pref.dart';
 import 'package:recycle_mate/services/widget_support.dart';
 import 'package:recycle_mate/services/apis.dart';
 import 'package:recycle_mate/services/ml_classification.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 class UploadItem extends StatefulWidget {
-  final String? category; // Make optional for ML detection
+  final String? category;
   final String id;
 
   UploadItem({this.category, required this.id});
@@ -31,7 +33,10 @@ class _UploadItemState extends State<UploadItem> {
   bool _loading = false;
   ClassificationResult? _mlResult;
 
-  // All items are in kg now
+  Position? _userPosition;
+  LatLng? _selectedLocationPoint; // Store selected location
+  MapController? mapController;
+
   String? _selectedCategory;
   final Map<String, double> _pointsPerKg = {
     'Plastic': 5.0,
@@ -57,7 +62,7 @@ class _UploadItemState extends State<UploadItem> {
   @override
   void initState() {
     super.initState();
-    _selectedCategory = widget.category; // Use passed category if available
+    _selectedCategory = widget.category;
     _loadSharedPref();
     _fetchAndSortLocationsByDistance();
     _initML();
@@ -70,6 +75,7 @@ class _UploadItemState extends State<UploadItem> {
     quantitycontroller.dispose();
     addresscontroller.dispose();
     MLClassificationService.dispose();
+    mapController?.dispose();
     super.dispose();
   }
 
@@ -113,10 +119,8 @@ class _UploadItemState extends State<UploadItem> {
     if (image != null) {
       selectedImage = File(image.path);
       setState(() {
-        _mlResult = null; // Reset ML result when new image is selected
+        _mlResult = null;
       });
-
-      // Automatically run ML classification after image selection
       await _runMLClassification();
     }
   }
@@ -162,7 +166,7 @@ class _UploadItemState extends State<UploadItem> {
         _mlResult = result;
         if (result.success && result.category != null) {
           _selectedCategory = result.category;
-          _onQtyChanged(); // Recalculate points with new category
+          _onQtyChanged();
         }
       });
 
@@ -197,7 +201,9 @@ class _UploadItemState extends State<UploadItem> {
     if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
       permission = await Geolocator.requestPermission();
     }
+
     final pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+    setState(() => _userPosition = pos);
 
     final withDistance = pickupLocations.map((loc) {
       final dist = _distanceKm(pos.latitude, pos.longitude, loc['lat'], loc['lng']);
@@ -211,6 +217,38 @@ class _UploadItemState extends State<UploadItem> {
       selectedLocation = withDistance.isNotEmpty ? withDistance.first["name"] : null;
       if (selectedLocation != null) addresscontroller.text = selectedLocation!;
     });
+  }
+
+  // Handle map tap to select location
+  void _onMapTap(LatLng point) {
+    // Find closest pickup location to tap point
+    double closestDistance = double.infinity;
+    Map<String, dynamic>? closestLocation;
+
+    for (var loc in sortedLocations) {
+      double dist = _distanceKm(point.latitude, point.longitude, loc['lat'], loc['lng']);
+      if (dist < closestDistance) {
+        closestDistance = dist;
+        closestLocation = loc;
+      }
+    }
+
+    // If tapped near a location (within 1 km), select it
+    if (closestDistance < 1.0 && closestLocation != null) {
+      setState(() {
+        selectedLocation = closestLocation!['name'];
+        addresscontroller.text = selectedLocation!;
+        _selectedLocationPoint = LatLng(closestLocation['lat'], closestLocation['lng']);
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Selected: ${closestLocation['name']}')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tap near a pickup location')),
+      );
+    }
   }
 
   Future<void> _submit() async {
@@ -238,7 +276,6 @@ class _UploadItemState extends State<UploadItem> {
 
     final itemId = randomAlphaNumeric(10);
 
-    // Upload image to ImageKit
     final imageUrl = await ImageKitApi.uploadImage(selectedImage!);
     if (imageUrl == null) {
       setState(() => _loading = false);
@@ -259,7 +296,6 @@ class _UploadItemState extends State<UploadItem> {
       "Status": "Pending",
       "Points": _totalPoints,
       "CreatedAt": FieldValue.serverTimestamp(),
-      // ML data for reference
       if (_mlResult != null) "MLData": {
         "predictedLabel": _mlResult!.predictedLabel,
         "confidence": _mlResult!.confidence,
@@ -277,10 +313,11 @@ class _UploadItemState extends State<UploadItem> {
         addresscontroller.clear();
         quantitycontroller.clear();
         selectedImage = null;
-        _selectedCategory = widget.category; // Reset to original category if passed
+        _selectedCategory = widget.category;
         _mlResult = null;
         _qty = 0;
         _totalPoints = 0;
+        _selectedLocationPoint = null;
       });
       await Future.delayed(const Duration(milliseconds: 600));
       if (mounted) Navigator.pop(context);
@@ -366,10 +403,17 @@ class _UploadItemState extends State<UploadItem> {
 
                     const SizedBox(height: 30),
 
+                    // MAP - WITH POLYLINE AND TAP
+                    Text("Click on a location on the map to select:", style: AppWidget.normalTextStyle(16.0)),
+                    const SizedBox(height: 10),
+                    _buildMapWidget(),
+
+                    const SizedBox(height: 30),
+
                     // Drop off location
                     Align(
                       alignment: Alignment.centerLeft,
-                      child: Text("Select a drop off location near you:", style: AppWidget.normalTextStyle(18.0)),
+                      child: Text("Selected location:", style: AppWidget.normalTextStyle(18.0)),
                     ),
                     const SizedBox(height: 10),
                     Container(
@@ -392,6 +436,9 @@ class _UploadItemState extends State<UploadItem> {
                           setState(() {
                             selectedLocation = val;
                             addresscontroller.text = val ?? "";
+                            // Update selected location point
+                            final loc = sortedLocations.firstWhere((l) => l['name'] == val);
+                            _selectedLocationPoint = LatLng(loc['lat'], loc['lng']);
                           });
                         },
                       ),
@@ -453,6 +500,136 @@ class _UploadItemState extends State<UploadItem> {
     );
   }
 
+  // UPDATED: Map Widget with polyline from user to selected location
+  Widget _buildMapWidget() {
+    if (_userPosition == null) {
+      return Container(
+        height: 250,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          color: Colors.grey[200],
+        ),
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    return Container(
+      height: 250,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: FlutterMap(
+          mapController: mapController,
+          options: MapOptions(
+            initialCenter: LatLng(_userPosition!.latitude, _userPosition!.longitude),
+            initialZoom: 13,
+            onTap: (tapPosition, point) => _onMapTap(point),
+          ),
+          children: [
+            TileLayer(
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              userAgentPackageName: 'com.example.recycle_mate',
+            ),
+            // Polyline from user to selected location
+            if (_selectedLocationPoint != null)
+              PolylineLayer(
+                polylines: [
+                  Polyline(
+                    points: [
+                      LatLng(_userPosition!.latitude, _userPosition!.longitude),
+                      _selectedLocationPoint!,
+                    ],
+                    color: Colors.blue,
+                    strokeWidth: 3,
+                  )
+                ],
+              ),
+            MarkerLayer(
+              markers: [
+                // User Location (Blue)
+                Marker(
+                  point: LatLng(_userPosition!.latitude, _userPosition!.longitude),
+                  width: 40,
+                  height: 40,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.blue,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.blue.withOpacity(0.5),
+                          blurRadius: 8,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(Icons.my_location, color: Colors.white, size: 20),
+                  ),
+                ),
+                // Pickup Locations (Green)
+                ...pickupLocations.map((loc) {
+                  final isSelected = _selectedLocationPoint?.latitude == loc['lat'] &&
+                      _selectedLocationPoint?.longitude == loc['lng'];
+
+                  return Marker(
+                    point: LatLng(loc['lat'], loc['lng']),
+                    width: 50,
+                    height: 60,
+                    child: Column(
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            color: isSelected ? Colors.red : Colors.green,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white,
+                              width: isSelected ? 3 : 2,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: (isSelected ? Colors.red : Colors.green).withOpacity(0.5),
+                                blurRadius: 8,
+                                spreadRadius: isSelected ? 3 : 2,
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            isSelected ? Icons.location_on : Icons.location_on,
+                            color: Colors.white,
+                            size: isSelected ? 24 : 20,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isSelected ? Colors.red : Colors.green,
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                          child: Text(
+                            loc['name'],
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 8,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildMLResultCard() {
     return Card(
       elevation: 4,
@@ -476,25 +653,11 @@ class _UploadItemState extends State<UploadItem> {
                 'Confidence: ${(_mlResult!.confidence! * 100).toStringAsFixed(1)}%',
                 style: const TextStyle(fontSize: 14, color: Colors.grey),
               ),
-              if (_mlResult!.allPredictions != null && _mlResult!.allPredictions!.length > 1) ...[
-                const SizedBox(height: 8),
-                Text(
-                  'Other possibilities: ${_mlResult!.allPredictions!.skip(1).take(2).map((e) => '${e.label} (${(e.confidence * 100).toStringAsFixed(0)}%)').join(', ')}',
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-              ],
             ] else ...[
               Text(
                 'Detection failed: ${_mlResult!.error}',
                 style: const TextStyle(fontSize: 14, color: Colors.red),
               ),
-              if (_mlResult!.allPredictions != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  'Top predictions: ${_mlResult!.allPredictions!.take(3).map((e) => '${e.label} (${(e.confidence * 100).toStringAsFixed(0)}%)').join(', ')}',
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-              ],
             ],
           ],
         ),
@@ -533,7 +696,7 @@ class _UploadItemState extends State<UploadItem> {
             onChanged: (val) {
               setState(() {
                 _selectedCategory = val;
-                _onQtyChanged(); // Recalculate points
+                _onQtyChanged();
               });
             },
           ),
@@ -572,11 +735,6 @@ class _UploadItemState extends State<UploadItem> {
                 style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.green),
               ),
             ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            "(Final points awarded after admin approval)",
-            style: AppWidget.normalTextStyle(12.0).copyWith(color: Colors.black54),
           ),
         ],
       ),

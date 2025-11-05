@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:recycle_mate/Admin/admin_home.dart';
 import 'package:recycle_mate/services/database.dart';
 import 'package:recycle_mate/services/widget_support.dart';
 
@@ -28,26 +27,68 @@ class _AdminRejectedState extends State<AdminRejected> {
     getRejectedStream();
   }
 
-  Future<String> getUserPoints(String docId) async{
-    try{
-      //Reference to the 'users' collection and specific document
+  Future<String> getUserPoints(String docId) async {
+    try {
       DocumentSnapshot docSnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(docId)
           .get();
 
-      if(docSnapshot.exists){
-        //Get the 'userpoints' field
+      if (docSnapshot.exists) {
         var data = docSnapshot.data() as Map<String, dynamic>;
         return data['points'].toString();
-      }else{
-        print('No such document!');
+      } else {
         return 'No document';
       }
-    }catch(e){
-      print("Error fetching user points! $e");
+    } catch (e) {
       return 'Error';
     }
+  }
+
+  void _showDeleteConfirmDialog(DocumentSnapshot ds) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Request'),
+        content: const Text(
+          'Are you sure you want to permanently delete this request? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              // Delete permanently
+              await FirebaseFirestore.instance
+                  .collection("requests")
+                  .doc(ds.id)
+                  .delete();
+              await FirebaseFirestore.instance
+                  .collection("users")
+                  .doc(ds["UserId"])
+                  .collection("items")
+                  .doc(ds.id)
+                  .delete();
+
+              if (!mounted) return;
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Request deleted permanently"),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget allRejected() {
@@ -55,198 +96,285 @@ class _AdminRejectedState extends State<AdminRejected> {
       stream: rejectedStream,
       builder: (context, AsyncSnapshot snapshot) {
         if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(
+            child: CircularProgressIndicator(color: Colors.red),
+          );
         }
 
         if (snapshot.data.docs.isEmpty) {
-          return const Center(
-            child: Text(
-              "No rejected requests",
-              style: TextStyle(fontSize: 18, color: Colors.grey),
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.inbox_outlined,
+                  size: 80,
+                  color: Colors.grey[400],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'No rejected requests',
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
             ),
           );
         }
 
         return ListView.builder(
-          padding: const EdgeInsets.symmetric(vertical: 20.0),
+          padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 16.0),
           itemCount: snapshot.data.docs.length,
           itemBuilder: (context, index) {
             DocumentSnapshot ds = snapshot.data.docs[index];
-            return Container(
-              margin: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
-              child: Material(
-                elevation: 3.0,
-                borderRadius: BorderRadius.circular(20.0),
-                child: Container(
-                  padding: const EdgeInsets.all(10.0),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20.0),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.black45, width: 2.0),
-                          borderRadius: BorderRadius.circular(20.0),
-                        ),
-                        child: ds["Image"] != "" ?
-                        Image.network(
-                          ds["Image"],
-                          height: 120,
-                          width: 120,
-                          fit: BoxFit.contain,
-                        )
-                            : Image.asset(
-                          "assets/images/coca.png",
-                          height: 120,
-                          width: 120,
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                      const SizedBox(width: 10.0),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                const Icon(Icons.person, color: Colors.red, size: 28.0),
-                                const SizedBox(width: 10.0),
-                                Expanded(
-                                  child: Text(
-                                    ds["Name"],
-                                    style: AppWidget.normalTextStyle(20.0),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 5.0),
-                            Row(
-                              children: [
-                                const Icon(Icons.location_on, color: Colors.red, size: 28.0),
-                                const SizedBox(width: 10.0),
-                                Expanded(
-                                  child: Text(
-                                    ds["Address"],
-                                    style: AppWidget.normalTextStyle(20.0),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 5.0),
-                            Row(
-                              children: [
-                                const Icon(Icons.inventory, color: Colors.red, size: 28.0),
-                                const SizedBox(width: 10.0),
-                                Expanded(
-                                  child: Text(
-                                    ds["Quantity"].toString(),
-                                    style: AppWidget.normalTextStyle(20.0),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10.0),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: InkWell(
-                                    onTap: () async {
-                                      // Move back to pending status
-                                      await FirebaseFirestore.instance
-                                          .collection("requests")
-                                          .doc(ds.id)
-                                          .update({"Status": "Pending"});
+            final Map<String, dynamic> data =
+            ds.data() as Map<String, dynamic>;
 
-                                      await FirebaseFirestore.instance
-                                          .collection("users")
-                                          .doc(ds["UserId"])
-                                          .collection("items")
-                                          .doc(ds.id)
-                                          .update({"Status": "Pending"});
+            return Card(
+              margin: const EdgeInsets.only(bottom: 16.0),
+              elevation: 3.0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16.0),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Image and basic info row
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Image
+                        Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: Colors.grey[300]!,
+                              width: 2.0,
+                            ),
+                            borderRadius: BorderRadius.circular(12.0),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(10.0),
+                            child: (data["Image"] != null &&
+                                data["Image"].toString().isNotEmpty)
+                                ? Image.network(
+                              data["Image"],
+                              height: 100,
+                              width: 100,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Image.asset(
+                                  "assets/images/coca.png",
+                                  height: 100,
+                                  width: 100,
+                                  fit: BoxFit.cover,
+                                );
+                              },
+                            )
+                                : Image.asset(
+                              "assets/images/coca.png",
+                              height: 100,
+                              width: 100,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16.0),
 
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text("Request moved to Pending")),
-                                      );
-                                    },
-                                    child: Container(
-                                      height: 40,
-                                      decoration: BoxDecoration(
-                                        color: Colors.orange,
-                                        borderRadius: BorderRadius.circular(10.0),
+                        // Details
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Name
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.person,
+                                    color: Colors.red,
+                                    size: 20.0,
+                                  ),
+                                  const SizedBox(width: 8.0),
+                                  Expanded(
+                                    child: Text(
+                                      data["Name"] ?? "-",
+                                      style: const TextStyle(
+                                        fontSize: 16.0,
+                                        fontWeight: FontWeight.bold,
                                       ),
-                                      child: Center(
-                                        child: Text(
-                                          "Reopen",
-                                          style: AppWidget.whiteTextStyle(18.0),
-                                        ),
-                                      ),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
-                                ),
-                                const SizedBox(width: 10.0),
-                                Expanded(
-                                  child: InkWell(
-                                    onTap: () async {
-                                      // Delete permanently
-                                      await FirebaseFirestore.instance
-                                          .collection("requests")
-                                          .doc(ds.id)
-                                          .delete();
-                                      await FirebaseFirestore.instance
-                                          .collection("users")
-                                          .doc(ds["UserId"])
-                                          .collection("items")
-                                          .doc(ds.id)
-                                          .delete();
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text("Request deleted permanently")),
-                                      );
-                                    },
-                                    child: Container(
-                                      height: 40,
-                                      decoration: BoxDecoration(
-                                        color: Colors.red,
-                                        borderRadius: BorderRadius.circular(10.0),
-                                      ),
-                                      child: Center(
-                                        child: Text(
-                                          "Delete",
-                                          style: AppWidget.whiteTextStyle(18.0),
-                                        ),
+                                ],
+                              ),
+                              const SizedBox(height: 8.0),
+
+                              // Category
+                              if (data["Category"] != null)
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.category,
+                                      color: Colors.blue,
+                                      size: 18.0,
+                                    ),
+                                    const SizedBox(width: 8.0),
+                                    Expanded(
+                                      child: Text(
+                                        data["Category"].toString(),
+                                        style: const TextStyle(fontSize: 14.0),
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
+                                  ],
+                                ),
+                              const SizedBox(height: 6.0),
+
+                              // Quantity
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.inventory,
+                                    color: Colors.orange,
+                                    size: 18.0,
                                   ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8.0),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: Colors.red.shade50,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.red.shade200),
+                                  const SizedBox(width: 8.0),
+                                  Expanded(
+                                    child: Text(
+                                      data["QuantityUnit"] != null
+                                          ? "${data["Quantity"]} ${data["QuantityUnit"]}"
+                                          : data["Quantity"].toString(),
+                                      style: const TextStyle(fontSize: 14.0),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              child: const Text(
-                                "REJECTED",
-                                style: TextStyle(
-                                  color: Colors.red,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 12.0),
+
+                    // Address
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.location_on,
+                          color: Colors.redAccent,
+                          size: 18.0,
+                        ),
+                        const SizedBox(width: 8.0),
+                        Expanded(
+                          child: Text(
+                            data["Address"] ?? "-",
+                            style: const TextStyle(fontSize: 14.0),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 2,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 12.0),
+
+                    // Rejected Status Badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12.0,
+                        vertical: 6.0,
                       ),
-                    ],
-                  ),
+                      decoration: BoxDecoration(
+                        color: Colors.red[50],
+                        borderRadius: BorderRadius.circular(8.0),
+                        border: Border.all(color: Colors.red[200]!),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.cancel, color: Colors.red[700], size: 16),
+                          const SizedBox(width: 6),
+                          Text(
+                            "REJECTED",
+                            style: TextStyle(
+                              color: Colors.red[700],
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12.0,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 16.0),
+
+                    // Action Buttons
+                    Row(
+                      children: [
+                        // Reopen Button
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () async {
+                              // Move back to pending status
+                              await FirebaseFirestore.instance
+                                  .collection("requests")
+                                  .doc(ds.id)
+                                  .update({"Status": "Pending"});
+
+                              await FirebaseFirestore.instance
+                                  .collection("users")
+                                  .doc(data["UserId"])
+                                  .collection("items")
+                                  .doc(ds.id)
+                                  .update({"Status": "Pending"});
+
+                              if (!mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text("Request moved to Pending"),
+                                  backgroundColor: Colors.orange,
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.refresh, size: 18),
+                            label: const Text("Reopen"),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.orange,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10.0),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(width: 12.0),
+
+                        // Delete Button
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () => _showDeleteConfirmDialog(ds),
+                            icon: const Icon(Icons.delete, size: 18),
+                            label: const Text("Delete"),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10.0),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             );
@@ -259,66 +387,21 @@ class _AdminRejectedState extends State<AdminRejected> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        margin: const EdgeInsets.only(top: 50.0),
-        child: Column(
-          children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.only(left: 20.0, right: 20.0),
-              child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context)=> const AdminHome()));
-                    },
-                    child: Material(
-                      elevation: 3.0,
-                      borderRadius: BorderRadius.circular(60),
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: Colors.black,
-                          borderRadius: BorderRadius.circular(60),
-                        ),
-                        child: const Icon(
-                          Icons.arrow_back_ios_new_rounded,
-                          color: Color(0xFFececf8),
-                          size: 30.0,
-                        ),
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: MediaQuery.of(context).size.width / 7),
-                  Expanded(
-                    child: Text(
-                      "Rejected Requests",
-                      style: AppWidget.headlineTextStyle(25.0),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 20.0),
-
-            // List of rejected requests
-            Expanded(
-              child: Container(
-                width: MediaQuery.of(context).size.width,
-                decoration: const BoxDecoration(
-                  color: Color.fromARGB(255, 251, 251, 251),
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(30.0),
-                    topRight: Radius.circular(30.0),
-                  ),
-                ),
-                child: allRejected(),
-              ),
-            ),
-          ],
+      appBar: AppBar(
+        title: const Text('Rejected Requests'),
+        backgroundColor: Colors.red[700],
+        foregroundColor: Colors.white,
+        elevation: 2,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
         ),
+      ),
+      body: Container(
+        decoration: const BoxDecoration(
+          color: Color.fromARGB(255, 251, 251, 251),
+        ),
+        child: allRejected(),
       ),
     );
   }
